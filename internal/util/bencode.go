@@ -25,7 +25,7 @@ func Decode(r io.Reader) (BencodedValue, error) {
 }
 
 func parseBencode(r *bytes.Reader) (BencodedValue, error) {
-	// read delimiter
+	// read beginning delimiter
 	delimiter, err := r.ReadByte()
 	if err != nil {
 		return nil, err
@@ -55,6 +55,7 @@ func decodeByteString(r *bytes.Reader, firstDigit byte) (string, error) {
 			return "", err
 		}
 
+		// delimiter for byte string length
 		if digit == ':' {
 			break
 		}
@@ -83,7 +84,7 @@ func decodeInteger(r *bytes.Reader) (int64, error) {
 			return 0, err
 		}
 
-		// read the integer until the end delimiter
+		// end delimiter for integers
 		if digit == 'e' {
 			break
 		}
@@ -101,11 +102,12 @@ func decodeList(r *bytes.Reader) ([]BencodedValue, error) {
 			return nil, err
 		}
 
+		// end delimiter for lists
 		if delimiter == 'e' {
 			break
 		}
 
-		r.UnreadByte()
+		r.UnreadByte() // unread to properly identify next type
 		element, err := parseBencode(r)
 		if err != nil {
 			return nil, err
