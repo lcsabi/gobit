@@ -17,7 +17,7 @@ func TestParseInteger(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		got, err := parseInt(bytes.NewReader([]byte(tc.input[1:]))) // skip 'i'
+		got, err := decodeInteger(bytes.NewReader([]byte(tc.input[1:]))) // skip 'i'
 		if err != nil {
 			t.Errorf("parseInt(%q) returned error: %v", tc.input, err)
 			continue
@@ -40,7 +40,7 @@ func TestParseString(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		got, err := parseByteString(bytes.NewReader([]byte(tc.input[1:])), tc.input[0]) // skip first digit
+		got, err := decodeByteString(bytes.NewReader([]byte(tc.input[1:])), tc.input[0]) // skip first digit
 		if err != nil {
 			t.Errorf("parseByteString(%q) returned error: %v", tc.input, err)
 			continue
@@ -64,7 +64,7 @@ func TestParseList(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		got, err := parseList(bytes.NewReader([]byte(tc.input[1:]))) // skip 'l'
+		got, err := decodeList(bytes.NewReader([]byte(tc.input[1:]))) // skip 'l'
 		if err != nil {
 			t.Errorf("parseList(%q) returned error: %v", tc.input, err)
 			continue

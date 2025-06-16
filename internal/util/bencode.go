@@ -33,18 +33,18 @@ func parseBencode(r *bytes.Reader) (BencodedValue, error) {
 
 	switch {
 	case delimiter == 'i':
-		return parseInt(r)
+		return decodeInteger(r)
 	case delimiter >= '0' && delimiter <= '9':
 		// delimiter is also the first digit of the Byte String's length
-		return parseByteString(r, delimiter)
+		return decodeByteString(r, delimiter)
 	case delimiter == 'l':
-		return parseList(r)
+		return decodeList(r)
 	default:
 		return nil, fmt.Errorf("invalid bencode prefix: %c", delimiter)
 	}
 }
 
-func parseByteString(r *bytes.Reader, firstDigit byte) (string, error) {
+func decodeByteString(r *bytes.Reader, firstDigit byte) (string, error) {
 	var buffer bytes.Buffer
 	buffer.WriteByte(firstDigit)
 
@@ -75,7 +75,7 @@ func parseByteString(r *bytes.Reader, firstDigit byte) (string, error) {
 	return string(byteString), nil
 }
 
-func parseInt(r *bytes.Reader) (int64, error) {
+func decodeInteger(r *bytes.Reader) (int64, error) {
 	var buffer bytes.Buffer
 	for {
 		digit, err := r.ReadByte()
@@ -93,7 +93,7 @@ func parseInt(r *bytes.Reader) (int64, error) {
 	return strconv.ParseInt(buffer.String(), 10, 64)
 }
 
-func parseList(r *bytes.Reader) ([]BencodedValue, error) {
+func decodeList(r *bytes.Reader) ([]BencodedValue, error) {
 	var values []BencodedValue
 	for {
 		delimiter, err := r.ReadByte()
