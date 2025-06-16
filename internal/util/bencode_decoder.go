@@ -1,5 +1,3 @@
-// https://wiki.theory.org/BitTorrentSpecification#Bencoding
-
 package util
 
 import (
@@ -9,8 +7,14 @@ import (
 	"strconv"
 )
 
+// BencodedValue represents the possible values that can be parsed from a bencoded byte array.
+//
+// As per specification, it supports the following types: byte strings, integers, lists, and dictionaries.
+//
+// Reference: https://wiki.theory.org/BitTorrentSpecification#Bencoding
 type BencodedValue any
 
+// Decode returns the parsed bencode that is read by the received io.Reader.
 func Decode(r io.Reader) (BencodedValue, error) {
 	data, err := io.ReadAll(r)
 	if err != nil {
@@ -38,27 +42,11 @@ func parseBencode(r *bytes.Reader) (BencodedValue, error) {
 	}
 }
 
-func parseInt(r *bytes.Reader) (int64, error) {
-	var buffer bytes.Buffer
-	for {
-		digit, err := r.ReadByte()
-		if err != nil {
-			return 0, err
-		}
-
-		if digit == 'e' {
-			break
-		}
-		buffer.WriteByte(digit)
-	}
-
-	return strconv.ParseInt(buffer.String(), 10, 64)
-}
-
 func parseByteString(r *bytes.Reader, firstDigit byte) (string, error) {
 	var buffer bytes.Buffer
 	buffer.WriteByte(firstDigit)
 
+	// read the length of the byte string
 	for {
 		digit, err := r.ReadByte()
 		if err != nil {
@@ -75,6 +63,7 @@ func parseByteString(r *bytes.Reader, firstDigit byte) (string, error) {
 		return "", err
 	}
 
+	// read the byte string itself
 	byteString := make([]byte, byteStringLength)
 	_, err = io.ReadFull(r, byteString)
 	if err != nil {
@@ -82,4 +71,22 @@ func parseByteString(r *bytes.Reader, firstDigit byte) (string, error) {
 	}
 
 	return string(byteString), nil
+}
+
+func parseInt(r *bytes.Reader) (int64, error) {
+	var buffer bytes.Buffer
+	for {
+		digit, err := r.ReadByte()
+		if err != nil {
+			return 0, err
+		}
+
+		// read the integer until the end delimiter
+		if digit == 'e' {
+			break
+		}
+		buffer.WriteByte(digit)
+	}
+
+	return strconv.ParseInt(buffer.String(), 10, 64)
 }
