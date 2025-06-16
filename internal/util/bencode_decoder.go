@@ -1,6 +1,6 @@
 // https://wiki.theory.org/BitTorrentSpecification#Bencoding
 
-package main
+package util
 
 import (
 	"bytes"
@@ -10,6 +10,15 @@ import (
 )
 
 type BencodedValue any
+
+func Decode(r io.Reader) (BencodedValue, error) {
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+
+	return parseBencode(bytes.NewReader(data))
+}
 
 func parseBencode(r *bytes.Reader) (BencodedValue, error) {
 	// read delimiter
@@ -73,14 +82,4 @@ func parseByteString(r *bytes.Reader, firstDigit byte) (string, error) {
 	}
 
 	return string(byteString), nil
-}
-
-func main() {
-	input := []byte("4:spam")
-	reader := bytes.NewReader(input)
-	val, err := parseBencode(reader)
-	if err != nil {
-		fmt.Printf("error %v\n", err)
-	}
-	fmt.Println(val)
 }
