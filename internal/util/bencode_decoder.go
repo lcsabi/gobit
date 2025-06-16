@@ -37,6 +37,8 @@ func parseBencode(r *bytes.Reader) (BencodedValue, error) {
 	case delimiter >= '0' && delimiter <= '9':
 		// delimiter is also the first digit of the Byte String's length
 		return parseByteString(r, delimiter)
+	case delimiter == 'l':
+		return parseList(r)
 	default:
 		return nil, fmt.Errorf("invalid bencode prefix: %c", delimiter)
 	}
@@ -89,4 +91,28 @@ func parseInt(r *bytes.Reader) (int64, error) {
 	}
 
 	return strconv.ParseInt(buffer.String(), 10, 64)
+}
+
+func parseList(r *bytes.Reader) ([]BencodedValue, error) {
+	var values []BencodedValue
+	for {
+		delimiter, err := r.ReadByte()
+		if err != nil {
+			return nil, err
+		}
+
+		if delimiter == 'e' {
+			break
+		}
+
+		r.UnreadByte()
+		element, err := parseBencode(r)
+		if err != nil {
+			return nil, err
+		}
+
+		values = append(values, element)
+	}
+
+	return values, nil
 }
