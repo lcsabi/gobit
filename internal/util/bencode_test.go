@@ -87,7 +87,7 @@ func TestParseDictionary(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		got, err := decodeDictionary(bytes.NewReader([]byte(tc.input[1:]))) // skip 'l'
+		got, err := decodeDictionary(bytes.NewReader([]byte(tc.input[1:]))) // skip 'd'
 		if err != nil {
 			t.Errorf("decodeDictionary(%q) returned error: %v", tc.input, err)
 			continue
@@ -95,6 +95,38 @@ func TestParseDictionary(t *testing.T) {
 
 		if !reflect.DeepEqual(got, tc.expected) {
 			t.Errorf("decodeDictionary(%q) => got: %#v want: %#v", tc.input, got, tc.expected)
+		}
+	}
+}
+
+func TestDecode(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected map[string]BencodedValue
+	}{
+		{
+			input: "d8:announce26:http://tracker.example.com10:created by13:ExampleClient4:infod6:lengthi123456e4:name13:test_file.txt12:piece lengthi262144e6:pieces20:aaaaaaaaaaaaaaaaaaaaee",
+			expected: map[string]BencodedValue{
+				"announce":   "http://tracker.example.com",
+				"created by": "ExampleClient",
+				"info": map[string]BencodedValue{
+					"length":       int64(123456),
+					"name":         "test_file.txt",
+					"piece length": int64(262144),
+					"pieces":       "aaaaaaaaaaaaaaaaaaaa",
+				},
+			},
+		},
+	}
+	for _, tc := range testCases {
+		got, err := Decode(bytes.NewReader([]byte(tc.input)))
+		if err != nil {
+			t.Errorf("Decode(%q) returned error: %v", tc.input, err)
+			continue
+		}
+
+		if !reflect.DeepEqual(got, tc.expected) {
+			t.Errorf("Decode(%q) => got: %#v want: %#v", tc.input, got, tc.expected)
 		}
 	}
 }
