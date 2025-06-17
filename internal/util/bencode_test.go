@@ -94,7 +94,7 @@ func TestParseDictionary(t *testing.T) {
 		}
 
 		if !reflect.DeepEqual(got, tc.expected) {
-			t.Errorf("decodeDictionary(%q) => got: %#v want: %#v", tc.input, got, tc.expected)
+			t.Errorf("decodeDictionary(%q) =>\ngot:\n%#v\nwant:\n%#v", tc.input, got, tc.expected)
 		}
 	}
 }
@@ -126,7 +126,7 @@ func TestDecode(t *testing.T) {
 		}
 
 		if !reflect.DeepEqual(got, tc.expected) {
-			t.Errorf("Decode(%q) => got: %#v want: %#v", tc.input, got, tc.expected)
+			t.Errorf("Decode(%q) =>\ngot:\n%#v\nwant:\n%#v", tc.input, got, tc.expected)
 		}
 	}
 }
