@@ -2,6 +2,7 @@ package util
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -10,11 +11,11 @@ import (
 // BencodedValue represents the possible values that can be parsed from a bencoded byte array.
 //
 // As per specification, it supports the following types: byte strings, integers, lists, and dictionaries.
-//
-// Reference: https://wiki.theory.org/BitTorrentSpecification#Bencoding
 type BencodedValue any
 
 // Decode returns the parsed bencode that is read by the received io.Reader.
+//
+// Reference: https://wiki.theory.org/BitTorrentSpecification#Bencoding
 func Decode(r io.Reader) (BencodedValue, error) {
 	data, err := io.ReadAll(r)
 	if err != nil {
@@ -39,16 +40,17 @@ func parseBencode(r *bytes.Reader) (BencodedValue, error) {
 		return decodeByteString(r, delimiter)
 	case delimiter == 'l':
 		return decodeList(r)
+	case delimiter == 'd':
+		return decodeDictionary(r)
 	default:
 		return nil, fmt.Errorf("invalid bencode prefix: %c", delimiter)
 	}
 }
 
 func decodeByteString(r *bytes.Reader, firstDigit byte) (string, error) {
+	// read the length of the byte string
 	var buffer bytes.Buffer
 	buffer.WriteByte(firstDigit)
-
-	// read the length of the byte string
 	for {
 		digit, err := r.ReadByte()
 		if err != nil {
@@ -97,7 +99,7 @@ func decodeInteger(r *bytes.Reader) (int64, error) {
 func decodeList(r *bytes.Reader) ([]BencodedValue, error) {
 	var values []BencodedValue
 	for {
-		delimiter, err := r.ReadByte()
+		delimiter, err := r.ReadByte() // peek next type
 		if err != nil {
 			return nil, err
 		}
@@ -118,3 +120,43 @@ func decodeList(r *bytes.Reader) ([]BencodedValue, error) {
 
 	return values, nil
 }
+
+func decodeDictionary(r *bytes.Reader) (map[string]BencodedValue, error) {
+	values := make(map[string]BencodedValue)
+	for {
+		delimiter, err := r.ReadByte() // peek next type
+		if err != nil {
+			return nil, err
+		}
+		// end delimiter for dictionaries
+		if delimiter == 'e' {
+			break
+		}
+		r.UnreadByte() // unread to properly identify next type
+
+		// parse the key
+		key, err := parseBencode(r)
+		if err != nil {
+			return nil, err
+		}
+
+		// dictionaries must have byte strings as keys
+		keyAsString, ok := key.(string)
+		if !ok {
+			return nil, errors.New("dictionary key is not a string")
+		}
+
+		// parse the value
+		value, err := parseBencode(r)
+		if err != nil {
+			return nil, err
+		}
+
+		// append to hashmap
+		values[keyAsString] = value
+	}
+
+	return values, nil
+}
+
+// TODO: create a bencode validator
