@@ -13,10 +13,24 @@ import (
 // As per specification, it supports the following types: byte strings, integers, lists, and dictionaries.
 type BencodedValue any
 
-// Decode returns the parsed bencode that is read by the received io.Reader.
+// Decode reads bencoded data from the provided io.Reader and returns the
+// corresponding Go representation as a BencodedValue.
+//
+// The returned BencodedValue is one of the following supported Go types:
+//   - string                    → for bencoded byte strings
+//   - int64                     → for bencoded integers
+//   - []BencodedValue           → for bencoded lists
+//   - map[string]BencodedValue  → for bencoded dictionaries
+//
+// Internally, Decode reads the entire input into memory using io.ReadAll,
+// which is suitable for typical .torrent files under 1MB. For large inputs
+// or streamed magnet links, consider implementing a streaming parser.
+//
+// Returns an error if the input is invalid or unreadable.
+//
 // Reference: https://wiki.theory.org/BitTorrentSpecification#Bencoding
 func Decode(r io.Reader) (BencodedValue, error) {
-	data, err := io.ReadAll(r) // ! keep for basic torrent files under 1MB, change it later for magnet links
+	data, err := io.ReadAll(r) // ! possible bottleneck
 	if err != nil {
 		return nil, err
 	}
@@ -24,6 +38,18 @@ func Decode(r io.Reader) (BencodedValue, error) {
 	return parseBencode(bytes.NewReader(data))
 }
 
+// Encode returns the bencoded byte representation of the given BencodedValue.
+//
+// It allocates and uses an internal bytes.Buffer, and is suitable for
+// general-purpose use cases where you want the encoded output as a []byte.
+//
+// The input must be a valid BencodedValue. Otherwise, an error is returned.
+//
+// Supported types are:
+//   - string or []byte → encoded as byte strings
+//   - int or int64     → encoded as integers
+//   - []BencodedValue  → encoded as a list
+//   - map[string]BencodedValue → encoded as a dictionary (keys are sorted lexicographically)
 func Encode(val BencodedValue) ([]byte, error) {
 	var buf bytes.Buffer
 	err := EncodeTo(&buf, val)
@@ -33,6 +59,13 @@ func Encode(val BencodedValue) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// EncodeTo writes the bencoded representation of the given BencodedValue
+// directly into the provided bytes.Buffer.
+//
+// This function is useful for high-performance encoding where you want to
+// avoid unnecessary allocations by reusing a buffer.
+//
+// Returns an error if the input type is unsupported.
 func EncodeTo(w *bytes.Buffer, rawInput BencodedValue) error {
 	switch input := rawInput.(type) {
 	case []byte:
@@ -196,28 +229,28 @@ func encodeByteString(w *bytes.Buffer, value string) error {
 }
 
 func encodeInteger(w *bytes.Buffer, value int64) error {
-	w.WriteByte('i')
+	w.WriteByte('i')                                // beginning delimiter for an integer
 	tmp := strconv.AppendInt(nil, int64(value), 10) // append to a temporary byte slice
 	w.Write(tmp)
-	w.WriteByte('e')
+	w.WriteByte('e') // end delimiter for an integer
 
 	return nil
 }
 
 func encodeList(w *bytes.Buffer, list []BencodedValue) error {
-	w.WriteByte('l')
+	w.WriteByte('l') // beginning delimiter for a list
 	for _, item := range list {
 		if err := EncodeTo(w, item); err != nil {
 			return err
 		}
 	}
-	w.WriteByte('e')
+	w.WriteByte('e') // end delimiter for a list
 
 	return nil
 }
 
 func encodeDictionary(w *bytes.Buffer, dictionary map[string]BencodedValue) error {
-	w.WriteByte('d')
+	w.WriteByte('d') // beginning delimiter for a ictionary
 	keys := make([]string, 0, len(dictionary))
 	for k := range dictionary {
 		keys = append(keys, k)
@@ -232,7 +265,7 @@ func encodeDictionary(w *bytes.Buffer, dictionary map[string]BencodedValue) erro
 			return err
 		}
 	}
-	w.WriteByte('e')
+	w.WriteByte('e') // end delimiter for a dictionary
 	return nil
 }
 
