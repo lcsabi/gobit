@@ -213,13 +213,17 @@ func TestEncodeDictionary(t *testing.T) {
 
 func TestEncode(t *testing.T) {
 	input := map[string]BencodedValue{
+		"announce":   "http://tracker.example.com",
+		"created by": "ExampleClient",
 		"info": map[string]BencodedValue{
-			"name": "file.txt",
-			"size": 1234,
+			"length":       int64(123456),
+			"name":         "test_file.txt",
+			"piece length": int64(262144),
+			"pieces":       "aaaaaaaaaaaaaaaaaaaa",
 		},
 	}
 
-	expected := "d4:infod4:name8:file.txt4:sizei1234eee"
+	expected := "d8:announce26:http://tracker.example.com10:created by13:ExampleClient4:infod6:lengthi123456e4:name13:test_file.txt12:piece lengthi262144e6:pieces20:aaaaaaaaaaaaaaaaaaaaee"
 
 	var buf bytes.Buffer
 	res, err := Encode(input)
