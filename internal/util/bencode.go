@@ -30,6 +30,7 @@ type BencodedValue any
 //
 // Reference: https://wiki.theory.org/BitTorrentSpecification#Bencoding
 func Decode(r io.Reader) (BencodedValue, error) {
+	// TODO: optimize decoding for large torrent files and magnet links
 	data, err := io.ReadAll(r) // ! possible bottleneck
 	if err != nil {
 		return nil, err
@@ -254,7 +255,7 @@ func encodeList(w *bytes.Buffer, list []BencodedValue) error {
 }
 
 func encodeDictionary(w *bytes.Buffer, dictionary map[string]BencodedValue) error {
-	w.WriteByte('d') // beginning delimiter for a ictionary
+	w.WriteByte('d') // beginning delimiter for a dictionary
 	keys := make([]string, 0, len(dictionary))
 	for k := range dictionary {
 		keys = append(keys, k)
@@ -270,8 +271,8 @@ func encodeDictionary(w *bytes.Buffer, dictionary map[string]BencodedValue) erro
 		}
 	}
 	w.WriteByte('e') // end delimiter for a dictionary
+
 	return nil
 }
 
 // TODO: create a bencode validator
-// TODO: optimize decoding for large torrent files and magnet links
