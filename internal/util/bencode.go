@@ -50,6 +50,8 @@ func Decode(r io.Reader) (BencodedValue, error) {
 //   - int or int64     → encoded as integers
 //   - []BencodedValue  → encoded as a list
 //   - map[string]BencodedValue → encoded as a dictionary (keys are sorted lexicographically)
+//
+// Reference: https://wiki.theory.org/BitTorrentSpecification#Bencoding
 func Encode(val BencodedValue) ([]byte, error) {
 	var buf bytes.Buffer
 	err := EncodeTo(&buf, val)
@@ -66,6 +68,8 @@ func Encode(val BencodedValue) ([]byte, error) {
 // avoid unnecessary allocations by reusing a buffer.
 //
 // Returns an error if the input type is unsupported.
+//
+// Reference: https://wiki.theory.org/BitTorrentSpecification#Bencoding
 func EncodeTo(w *bytes.Buffer, rawInput BencodedValue) error {
 	switch input := rawInput.(type) {
 	case []byte:
@@ -123,7 +127,7 @@ func decodeByteString(r *bytes.Reader, firstDigit byte) (string, error) {
 		}
 		buffer.WriteByte(digit)
 	}
-	byteStringLength, err := strconv.ParseInt(buffer.String(), 10, 64)
+	byteStringLength, err := strconv.ParseInt(buffer.String(), 10, 64) // TODO: implement a max byte string length to avoid OOM attacks
 	if err != nil {
 		return "", err
 	}
