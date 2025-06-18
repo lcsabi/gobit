@@ -130,3 +130,103 @@ func TestDecode(t *testing.T) {
 		}
 	}
 }
+
+func TestEncodeByteString(t *testing.T) {
+	tests := []struct {
+		value    string
+		expected string
+	}{
+		{"", "0:"},
+		{"a", "1:a"},
+		{"spam", "4:spam"},
+		{"こんにちは", "15:こんにちは"}, // UTF-8: 5 runes, 15 bytes
+	}
+
+	for _, tt := range tests {
+		var buf bytes.Buffer
+		err := encodeByteString(&buf, tt.value)
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if buf.String() != tt.expected {
+			t.Errorf("expected %q, got %q", tt.expected, buf.String())
+		}
+	}
+}
+
+func TestEncodeInteger(t *testing.T) {
+	tests := []struct {
+		value    int64
+		expected string
+	}{
+		{0, "i0e"},
+		{42, "i42e"},
+		{-7, "i-7e"},
+		{123456789, "i123456789e"},
+	}
+
+	for _, tt := range tests {
+		var buf bytes.Buffer
+		err := encodeInteger(&buf, tt.value)
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if buf.String() != tt.expected {
+			t.Errorf("expected %q, got %q", tt.expected, buf.String())
+		}
+	}
+}
+
+func TestEncodeList(t *testing.T) {
+	list := []BencodedValue{"spam", "eggs", 42}
+
+	var buf bytes.Buffer
+	err := encodeList(&buf, list)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := "l4:spam4:eggsi42ee"
+	if buf.String() != expected {
+		t.Errorf("expected %q, got %q", expected, buf.String())
+	}
+}
+
+func TestEncodeDictionary(t *testing.T) {
+	dict := map[string]BencodedValue{
+		"cow":   "moo",
+		"spam":  "eggs",
+		"count": 42,
+	}
+
+	var buf bytes.Buffer
+	err := encodeDictionary(&buf, dict)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := "d5:counti42e3:cow3:moo4:spam4:eggse"
+	if buf.String() != expected {
+		t.Errorf("expected %q, got %q", expected, buf.String())
+	}
+}
+
+func TestEncode(t *testing.T) {
+	input := map[string]BencodedValue{
+		"info": map[string]BencodedValue{
+			"name": "file.txt",
+			"size": 1234,
+		},
+	}
+
+	expected := "d4:infod4:name8:file.txt4:sizei1234eee"
+
+	var buf bytes.Buffer
+	res, err := Encode(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(res) != expected {
+		t.Errorf("expected %q, got %q", expected, buf.String())
+	}
+}
