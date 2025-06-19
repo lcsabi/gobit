@@ -35,7 +35,7 @@ func TestParseInteger(t *testing.T) {
 func TestDecodeInvalidInteger(t *testing.T) {
 	testCases := []string{
 		"ie", // empty integer
-		//"i-0e",   // negative zero is invalid
+		//"i-0e",   // TODO: fix handling of invalid negative zero
 		"i123",   // missing 'e'
 		"i12a3e", // invalid character in integer
 	}
@@ -125,7 +125,7 @@ func TestParseList(t *testing.T) {
 // TestDecodeInvalidList ensures that malformed lists return an error.
 func TestDecodeInvalidList(t *testing.T) {
 	testCases := []string{
-		"li1ei2e",      // missing end 'e'
+		"li1ei2e",      // missing ending 'e'
 		"l4:spam4eggs", // malformed string
 		"lxe",          // unknown type in list
 	}
