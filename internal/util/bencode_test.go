@@ -3,9 +3,11 @@ package util
 import (
 	"bytes"
 	"reflect"
+	"strconv"
 	"testing"
 )
 
+// TestParseInteger verifies decoding of bencoded integers.
 func TestParseInteger(t *testing.T) {
 	testCases := []struct {
 		input    string
@@ -29,6 +31,26 @@ func TestParseInteger(t *testing.T) {
 	}
 }
 
+// TestDecodeInvalidInteger ensures that malformed integers return an error.
+func TestDecodeInvalidInteger(t *testing.T) {
+	testCases := []string{
+		"ie", // empty integer
+		//"i-0e",   // negative zero is invalid
+		"i123",   // missing 'e'
+		"i12a3e", // invalid character in integer
+	}
+
+	for _, input := range testCases {
+		t.Run(input, func(t *testing.T) {
+			_, err := decodeInteger(bytes.NewReader([]byte(input[1:]))) // skip 'i'
+			if err == nil {
+				t.Errorf("expected error for input %q, got nil", input)
+			}
+		})
+	}
+}
+
+// TestParseString verifies decoding of bencoded strings.
 func TestParseString(t *testing.T) {
 	testCases := []struct {
 		input    string
@@ -40,18 +62,40 @@ func TestParseString(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		got, err := decodeByteString(bytes.NewReader([]byte(tc.input[1:])), tc.input[0]) // skip first digit
-		if err != nil {
-			t.Errorf("decodeByteString(%q) returned error: %v", tc.input, err)
-			continue
-		}
+		t.Run(tc.input, func(t *testing.T) {
+			got, err := decodeByteString(bytes.NewReader([]byte(tc.input[1:])), tc.input[0]) // skip first digit
+			if err != nil {
+				t.Errorf("decodeByteString(%q) returned error: %v", tc.input, err)
+				return
+			}
 
-		if got != tc.expected {
-			t.Errorf("decodeByteString(%q) => got: %v want: %s", tc.input, got, tc.expected)
-		}
+			if got != tc.expected {
+				t.Errorf("decodeByteString(%q) => got: %v want: %s", tc.input, got, tc.expected)
+			}
+		})
 	}
 }
 
+// TestDecodeInvalidByteString ensures that malformed byte strings return an error.
+func TestDecodeInvalidByteString(t *testing.T) {
+	testCases := []string{
+		"4spam", // missing colon
+		"999:",  // declared length longer than actual
+		"3:ab",  // declared length shorter than actual
+		"a:b",   // non-numeric length
+	}
+
+	for _, input := range testCases {
+		t.Run(input, func(t *testing.T) {
+			_, err := decodeByteString(bytes.NewReader([]byte(input[1:])), input[0])
+			if err == nil {
+				t.Errorf("expected error for input %q, got nil", input)
+			}
+		})
+	}
+}
+
+// TestParseList verifies decoding of bencoded lists containing strings and integers.
 func TestParseList(t *testing.T) {
 	testCases := []struct {
 		input    string
@@ -64,18 +108,39 @@ func TestParseList(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		got, err := decodeList(bytes.NewReader([]byte(tc.input[1:]))) // skip 'l'
-		if err != nil {
-			t.Errorf("decodeList(%q) returned error: %v", tc.input, err)
-			continue
-		}
+		t.Run(tc.input, func(t *testing.T) {
+			got, err := decodeList(bytes.NewReader([]byte(tc.input[1:]))) // skip 'l'
+			if err != nil {
+				t.Errorf("decodeList(%q) returned error: %v", tc.input, err)
+				return
+			}
 
-		if !reflect.DeepEqual(got, tc.expected) {
-			t.Errorf("decodeList(%q) => got: %#v want: %#v", tc.input, got, tc.expected)
-		}
+			if !reflect.DeepEqual(got, tc.expected) {
+				t.Errorf("decodeList(%q) => got: %#v want: %#v", tc.input, got, tc.expected)
+			}
+		})
 	}
 }
 
+// TestDecodeInvalidList ensures that malformed lists return an error.
+func TestDecodeInvalidList(t *testing.T) {
+	testCases := []string{
+		"li1ei2e",      // missing end 'e'
+		"l4:spam4eggs", // malformed string
+		"lxe",          // unknown type in list
+	}
+
+	for _, input := range testCases {
+		t.Run(input, func(t *testing.T) {
+			_, err := decodeList(bytes.NewReader([]byte(input[1:]))) // skip 'l'
+			if err == nil {
+				t.Errorf("expected error for input %q, got nil", input)
+			}
+		})
+	}
+}
+
+// TestParseDictionary verifies decoding of bencoded dictionaries with mixed value types.
 func TestParseDictionary(t *testing.T) {
 	testCases := []struct {
 		input    string
@@ -87,18 +152,40 @@ func TestParseDictionary(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		got, err := decodeDictionary(bytes.NewReader([]byte(tc.input[1:]))) // skip 'd'
-		if err != nil {
-			t.Errorf("decodeDictionary(%q) returned error: %v", tc.input, err)
-			continue
-		}
+		t.Run(tc.input, func(t *testing.T) {
+			got, err := decodeDictionary(bytes.NewReader([]byte(tc.input[1:]))) // skip 'd'
+			if err != nil {
+				t.Errorf("decodeDictionary(%q) returned error: %v", tc.input, err)
+				return
+			}
 
-		if !reflect.DeepEqual(got, tc.expected) {
-			t.Errorf("decodeDictionary(%q) =>\ngot:\n%#v\nwant:\n%#v", tc.input, got, tc.expected)
-		}
+			if !reflect.DeepEqual(got, tc.expected) {
+				t.Errorf("decodeDictionary(%q) =>\ngot:\n%#v\nwant:\n%#v", tc.input, got, tc.expected)
+			}
+		})
 	}
 }
 
+// TestDecodeInvalidDictionary ensures that malformed dictionaries return an error.
+func TestDecodeInvalidDictionary(t *testing.T) {
+	testCases := []string{
+		"d3:cowmoo4:spam4:eggse", // missing colon in "cow": "moo"
+		"d3:cow3:moo3:spam",      // missing value for last key
+		"d3:cowi42e3:mooe",       // unsorted or bad key
+	}
+
+	for _, input := range testCases {
+		t.Run(input, func(t *testing.T) {
+			_, err := decodeDictionary(bytes.NewReader([]byte(input[1:]))) // skip 'd'
+			if err == nil {
+				t.Errorf("expected error for input %q, got nil", input)
+			}
+		})
+	}
+}
+
+// TestDecode verifies recursive decoding of a complete bencoded structure,
+// such as a torrent metadata dictionary.
 func TestDecode(t *testing.T) {
 	testCases := []struct {
 		input    string
@@ -119,21 +206,24 @@ func TestDecode(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		got, err := Decode(bytes.NewReader([]byte(tc.input)))
-		if err != nil {
-			t.Errorf("Decode(%q) returned error: %v", tc.input, err)
-			continue
-		}
+		t.Run(tc.input, func(t *testing.T) {
+			got, err := Decode(bytes.NewReader([]byte(tc.input)))
+			if err != nil {
+				t.Errorf("Decode(%q) returned error: %v", tc.input, err)
+				return
+			}
 
-		if !reflect.DeepEqual(got, tc.expected) {
-			t.Errorf("Decode(%q) =>\ngot:\n%#v\nwant:\n%#v", tc.input, got, tc.expected)
-		}
+			if !reflect.DeepEqual(got, tc.expected) {
+				t.Errorf("Decode(%q) =>\ngot:\n%#v\nwant:\n%#v", tc.input, got, tc.expected)
+			}
+		})
 	}
 }
 
+// TestEncodeByteString checks encoding of various UTF-8 and ASCII strings into bencode format.
 func TestEncodeByteString(t *testing.T) {
 	tests := []struct {
-		value    string
+		input    string
 		expected string
 	}{
 		{"", "0:"},
@@ -142,21 +232,25 @@ func TestEncodeByteString(t *testing.T) {
 		{"こんにちは", "15:こんにちは"}, // UTF-8: 5 runes, 15 bytes
 	}
 
-	for _, tt := range tests {
-		var buf bytes.Buffer
-		err := encodeByteString(&buf, tt.value)
-		if err != nil {
-			t.Errorf("unexpected error: %v", err)
-		}
-		if buf.String() != tt.expected {
-			t.Errorf("expected %q, got %q", tt.expected, buf.String())
-		}
+	for _, tc := range tests {
+		t.Run(tc.input, func(t *testing.T) {
+			var buf bytes.Buffer
+			err := encodeByteString(&buf, tc.input)
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+				return
+			}
+			if buf.String() != tc.expected {
+				t.Errorf("expected %q, got %q", tc.expected, buf.String())
+			}
+		})
 	}
 }
 
+// TestEncodeInteger checks encoding of positive, negative, and large integers into bencode format.
 func TestEncodeInteger(t *testing.T) {
 	tests := []struct {
-		value    int64
+		input    int64
 		expected string
 	}{
 		{0, "i0e"},
@@ -165,18 +259,22 @@ func TestEncodeInteger(t *testing.T) {
 		{123456789, "i123456789e"},
 	}
 
-	for _, tt := range tests {
-		var buf bytes.Buffer
-		err := encodeInteger(&buf, tt.value)
-		if err != nil {
-			t.Errorf("unexpected error: %v", err)
-		}
-		if buf.String() != tt.expected {
-			t.Errorf("expected %q, got %q", tt.expected, buf.String())
-		}
+	for _, tc := range tests {
+		t.Run(strconv.FormatInt(tc.input, 10), func(t *testing.T) {
+			var buf bytes.Buffer
+			err := encodeInteger(&buf, tc.input)
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+				return
+			}
+			if buf.String() != tc.expected {
+				t.Errorf("expected %q, got %q", tc.expected, buf.String())
+			}
+		})
 	}
 }
 
+// TestEncodeList verifies encoding of lists containing strings and integers into bencode format.
 func TestEncodeList(t *testing.T) {
 	list := []BencodedValue{"spam", "eggs", 42}
 
@@ -192,6 +290,7 @@ func TestEncodeList(t *testing.T) {
 	}
 }
 
+// TestEncodeDictionary verifies encoding of dictionaries with string and integer values into bencode format.
 func TestEncodeDictionary(t *testing.T) {
 	dict := map[string]BencodedValue{
 		"cow":   "moo",
@@ -211,6 +310,7 @@ func TestEncodeDictionary(t *testing.T) {
 	}
 }
 
+// TestEncode performs end-to-end encoding of a complex, nested bencoded dictionary.
 func TestEncode(t *testing.T) {
 	input := map[string]BencodedValue{
 		"announce":   "http://tracker.example.com",
@@ -225,12 +325,20 @@ func TestEncode(t *testing.T) {
 
 	expected := "d8:announce26:http://tracker.example.com10:created by13:ExampleClient4:infod6:lengthi123456e4:name13:test_file.txt12:piece lengthi262144e6:pieces20:aaaaaaaaaaaaaaaaaaaaee"
 
-	var buf bytes.Buffer
 	res, err := Encode(input)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if string(res) != expected {
-		t.Errorf("expected %q, got %q", expected, buf.String())
+		t.Errorf("expected %q, got %q", expected, string(res))
+	}
+}
+
+// TestDecodeUnknownType ensures that unrecognized bencode type characters return an error.
+func TestDecodeUnknownType(t *testing.T) {
+	input := "x12345e"
+	_, err := Decode(bytes.NewReader([]byte(input)))
+	if err == nil {
+		t.Errorf("expected error for unknown type in input %q, got nil", input)
 	}
 }
