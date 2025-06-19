@@ -59,6 +59,7 @@ func Encode(val BencodedValue) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return buf.Bytes(), nil
 }
 
@@ -275,4 +276,5 @@ func encodeDictionary(w *bytes.Buffer, dictionary map[string]BencodedValue) erro
 	return nil
 }
 
+// TODO: add a String() method to pretty-print BencodedValue
 // TODO: create a bencode validator
