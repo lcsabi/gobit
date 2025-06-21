@@ -129,9 +129,15 @@ func decodeByteString(r *bytes.Reader, firstDigit byte) (string, error) {
 		}
 		buffer.WriteByte(digit)
 	}
-	byteStringLength, err := strconv.ParseInt(buffer.String(), 10, 64) // TODO: implement a max byte string length to avoid OOM attacks
+	byteStringLength, err := strconv.ParseInt(buffer.String(), 10, 64)
 	if err != nil {
 		return "", err
+	}
+
+	// specify maximum length to prevent memory exhaustion
+	const MaxByteStringLength = 10 * 1024 * 1024 // 10 MB
+	if byteStringLength > MaxByteStringLength {
+		return "", fmt.Errorf("byte string length too large: %d", byteStringLength)
 	}
 
 	// read the byte string itself
@@ -146,17 +152,44 @@ func decodeByteString(r *bytes.Reader, firstDigit byte) (string, error) {
 
 func decodeInteger(r *bytes.Reader) (int64, error) {
 	var buffer bytes.Buffer
+	first := true
+
 	for {
 		digit, err := r.ReadByte()
 		if err != nil {
 			return 0, err
 		}
 
-		// end delimiter for integers
+		if first {
+			first = false
+			nextDigit, err := r.ReadByte()
+			if err != nil {
+				return 0, fmt.Errorf("error peeking second digit: %w", err)
+			}
+
+			if digit == '-' && nextDigit == '0' {
+				return 0, fmt.Errorf("negative zero in integer")
+			}
+			if digit == '0' && nextDigit != 'e' {
+				return 0, fmt.Errorf("leading zero in integer")
+			}
+
+			// defensive unread, panic should not happen because
+			// we guarantee to read a byte before unreading
+			if err := r.UnreadByte(); err != nil {
+				return 0, fmt.Errorf("unread error: %w", err)
+			}
+		}
+
 		if digit == 'e' {
 			break
 		}
+
 		buffer.WriteByte(digit)
+	}
+
+	if buffer.Len() == 0 {
+		return 0, errors.New("empty integer")
 	}
 
 	return strconv.ParseInt(buffer.String(), 10, 64)
@@ -277,4 +310,3 @@ func encodeDictionary(w *bytes.Buffer, dictionary map[string]BencodedValue) erro
 }
 
 // TODO: add a String() method to pretty-print BencodedValue
-// TODO: create a bencode validator

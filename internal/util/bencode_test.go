@@ -34,10 +34,11 @@ func TestParseInteger(t *testing.T) {
 // TestDecodeInvalidInteger ensures that malformed integers return an error.
 func TestDecodeInvalidInteger(t *testing.T) {
 	testCases := []string{
-		"ie", // empty integer
-		//"i-0e",   // TODO: fix handling of invalid negative zero
+		"ie",     // empty integer
+		"i-0e",   // negative zero
 		"i123",   // missing 'e'
 		"i12a3e", // invalid character in integer
+		"i02e",   // leading zero
 	}
 
 	for _, input := range testCases {
@@ -220,6 +221,15 @@ func TestDecode(t *testing.T) {
 	}
 }
 
+// TestDecodeUnknownType ensures that unrecognized bencode type characters return an error.
+func TestDecodeUnknownType(t *testing.T) {
+	input := "x12345e"
+	_, err := Decode(bytes.NewReader([]byte(input)))
+	if err == nil {
+		t.Errorf("expected error for unknown type in input %q, got nil", input)
+	}
+}
+
 // TestEncodeByteString checks encoding of various UTF-8 and ASCII strings into bencode format.
 func TestEncodeByteString(t *testing.T) {
 	tests := []struct {
@@ -334,11 +344,4 @@ func TestEncode(t *testing.T) {
 	}
 }
 
-// TestDecodeUnknownType ensures that unrecognized bencode type characters return an error.
-func TestDecodeUnknownType(t *testing.T) {
-	input := "x12345e"
-	_, err := Decode(bytes.NewReader([]byte(input)))
-	if err == nil {
-		t.Errorf("expected error for unknown type in input %q, got nil", input)
-	}
-}
+// TODO: implement benchmarking
