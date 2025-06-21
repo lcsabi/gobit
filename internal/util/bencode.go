@@ -17,10 +17,10 @@ type BencodedValue any
 // corresponding Go representation as a BencodedValue.
 //
 // The returned BencodedValue is one of the following supported Go types:
-//   - string                    → for bencoded byte strings
-//   - int64                     → for bencoded integers
-//   - []BencodedValue           → for bencoded lists
-//   - map[string]BencodedValue  → for bencoded dictionaries
+//   - string                    -> for bencoded byte strings
+//   - int64                     -> for bencoded integers
+//   - []BencodedValue           -> for bencoded lists
+//   - map[string]BencodedValue  -> for bencoded dictionaries
 //
 // Internally, Decode reads the entire input into memory using io.ReadAll,
 // which is suitable for typical .torrent files under 1MB. For large inputs
@@ -30,7 +30,7 @@ type BencodedValue any
 //
 // Reference: https://wiki.theory.org/BitTorrentSpecification#Bencoding
 func Decode(r io.Reader) (BencodedValue, error) {
-	// TODO: optimize decoding for large torrent files and magnet links
+	// TODO: optimize decoding for large torrent files and magnet links by introducing a Decoder type
 	data, err := io.ReadAll(r) // ! possible bottleneck
 	if err != nil {
 		return nil, err
@@ -47,10 +47,10 @@ func Decode(r io.Reader) (BencodedValue, error) {
 // The input must be a valid BencodedValue. Otherwise, an error is returned.
 //
 // Supported types are:
-//   - string or []byte → encoded as byte strings
-//   - int or int64     → encoded as integers
-//   - []BencodedValue  → encoded as a list
-//   - map[string]BencodedValue → encoded as a dictionary (keys are sorted lexicographically)
+//   - string or []byte         -> encoded as byte strings
+//   - int or int64             -> encoded as integers
+//   - []BencodedValue          -> encoded as a list
+//   - map[string]BencodedValue -> encoded as a dictionary (keys are sorted lexicographically)
 //
 // Reference: https://wiki.theory.org/BitTorrentSpecification#Bencoding
 func Encode(val BencodedValue) ([]byte, error) {
