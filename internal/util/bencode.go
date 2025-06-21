@@ -9,8 +9,11 @@ import (
 	"strconv"
 )
 
-// BencodedValue represents the possible values that can be parsed from a bencoded byte array.
+// BencodedValue represents every possible value that can be parsed from a bencoded byte array.
+//
 // As per specification, it supports the following types: byte strings, integers, lists, and dictionaries.
+//
+// Reference: https://wiki.theory.org/BitTorrentSpecification#Bencoding
 type BencodedValue any
 
 // Decode reads bencoded data from the provided io.Reader and returns the
