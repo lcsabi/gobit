@@ -132,6 +132,13 @@ func TypeOf(value BencodeValue) string {
 	}
 }
 
+func ToString(value BencodeValue) string {
+	var sb strings.Builder
+	PrettyPrintBencodeValue(&sb, value, 0)
+
+	return sb.String()
+}
+
 func PrettyPrintBencodeValue(w io.Writer, value BencodeValue, indentLevel int) {
 	indent := strings.Repeat("  ", indentLevel)
 
