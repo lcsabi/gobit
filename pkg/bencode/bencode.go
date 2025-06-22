@@ -1,4 +1,4 @@
-package util
+package bencode
 
 import (
 	"bytes"
@@ -10,14 +10,17 @@ import (
 	"strings"
 )
 
-// BencodeValue represents every possible value that can be parsed from a bencoded byte array.
-//
-// As per specification, it supports the following types: byte strings, integers, lists, and dictionaries.
+// BencodeValue represents any valid bencode value. It may be one of:
+//   - BencodeByteString (string)
+//   - BencodeInteger (int64)
+//   - BencodeList ([]BencodeValue)
+//   - BencodeDictionary (map[string]BencodeValue)
 //
 // Reference: https://wiki.theory.org/BitTorrentSpecification#Bencoding
 type BencodeValue any
 
-// BencodeByteString represents a bencoded byte string (always UTF-8 decoded).
+// BencodeByteString represents a bencoded byte string,
+// which is always UTF-8 decoded and exposed as a Go string.
 type BencodeByteString = string
 
 // BencodeInteger represents a bencoded integer.
@@ -29,22 +32,18 @@ type BencodeList = []BencodeValue
 // BencodeDictionary represents a bencoded dictionary with string keys and bencoded values.
 type BencodeDictionary = map[string]BencodeValue
 
-// Decode reads bencoded data from the provided io.Reader and returns the
-// corresponding Go representation as a BencodedValue.
-//
-// The returned BencodedValue is one of the following:
+// Decode reads bencoded data from the provided io.Reader and returns the corresponding
+// Go representation as a BencodeValue. The result will be one of:
 //   - BencodeByteString (string)
 //   - BencodeInteger (int64)
-//   - BencodeList ([]BencodedValue)
-//   - BencodeDictionary (map[string]BencodedValue)
+//   - BencodeList ([]BencodeValue)
+//   - BencodeDictionary (map[string]BencodeValue)
 //
-// Internally, Decode reads the entire input into memory using io.ReadAll,
-// which is suitable for typical .torrent files under 1MB. For large inputs
-// or streamed magnet links, consider implementing a streaming parser.
+// This method reads the entire input into memory using io.ReadAll, making it suitable
+// for .torrent files or other small bencode payloads. For large or streamed inputs,
+// consider implementing a streaming Decoder.
 //
-// Returns an error if the input is invalid or unreadable.
-//
-// Reference: https://wiki.theory.org/BitTorrentSpecification#Bencoding
+// Returns an error if the input is invalid or incomplete.
 func Decode(r io.Reader) (BencodeValue, error) {
 	// TODO: optimize decoding for large torrent files and magnet links by introducing a Decoder type
 	data, err := io.ReadAll(r) // ! possible bottleneck
@@ -55,20 +54,14 @@ func Decode(r io.Reader) (BencodeValue, error) {
 	return parseBencode(bytes.NewReader(data))
 }
 
-// Encode returns the bencoded byte representation of the given BencodedValue.
+// Encode encodes the given BencodeValue into its bencoded byte representation.
+// Supported value types include:
+//   - string or []byte → encoded as byte strings
+//   - int or int64     → encoded as integers
+//   - []BencodeValue   → encoded as a list
+//   - map[string]BencodeValue → encoded as a dictionary (keys are sorted)
 //
-// It allocates and uses an internal bytes.Buffer, and is suitable for
-// general-purpose use cases where you want the encoded output as a []byte.
-//
-// The input must be a valid BencodedValue. Otherwise, an error is returned.
-//
-// Supported types are:
-//   - string or []byte         -> encoded as byte strings
-//   - int or int64             -> encoded as integers
-//   - []BencodedValue          -> encoded as a list
-//   - map[string]BencodedValue -> encoded as a dictionary (keys are sorted lexicographically)
-//
-// Reference: https://wiki.theory.org/BitTorrentSpecification#Bencoding
+// The encoded data is returned as a new byte slice.
 func Encode(val BencodeValue) ([]byte, error) {
 	var buf bytes.Buffer
 	err := EncodeTo(&buf, val)
@@ -79,11 +72,8 @@ func Encode(val BencodeValue) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// EncodeTo writes the bencoded representation of the given BencodedValue
-// directly into the provided bytes.Buffer.
-//
-// This function is useful for high-performance encoding where you want to
-// avoid unnecessary allocations by reusing a buffer.
+// EncodeTo encodes the given BencodeValue and writes the result into the provided bytes.Buffer.
+// This variant is more efficient for repeated encodings as it avoids reallocations.
 //
 // Returns an error if the input type is unsupported.
 //
@@ -113,6 +103,8 @@ func EncodeTo(w *bytes.Buffer, rawInput BencodeValue) error {
 	}
 }
 
+// TypeOf returns a short string description of the BencodeValue's type.
+// Possible return values are: "byte string", "integer", "list", "dictionary", or "unknown".
 func TypeOf(value BencodeValue) string {
 	switch value.(type) {
 	case BencodeByteString:
@@ -132,14 +124,16 @@ func TypeOf(value BencodeValue) string {
 	}
 }
 
+// ToString returns a human-readable string representation of the given BencodeValue,
+// formatted with indentation and type labels. This is useful for debugging.
 func ToString(value BencodeValue) string {
 	var sb strings.Builder
-	PrettyPrintBencodeValue(&sb, value, 0)
+	prettyPrintBencodeValue(&sb, value, 0)
 
 	return sb.String()
 }
 
-func PrettyPrintBencodeValue(w io.Writer, value BencodeValue, indentLevel int) {
+func prettyPrintBencodeValue(w io.Writer, value BencodeValue, indentLevel int) {
 	indent := strings.Repeat("  ", indentLevel)
 
 	switch v := value.(type) {
@@ -153,14 +147,14 @@ func PrettyPrintBencodeValue(w io.Writer, value BencodeValue, indentLevel int) {
 		fmt.Fprintf(w, "%slist:\n", indent)
 		for i, item := range v {
 			fmt.Fprintf(w, "%s  [%d]:\n", indent, i)
-			PrettyPrintBencodeValue(w, item, indentLevel+2)
+			prettyPrintBencodeValue(w, item, indentLevel+2)
 		}
 
 	case BencodeDictionary:
 		fmt.Fprintf(w, "%sdictionary:\n", indent)
 		for k, val := range v {
 			fmt.Fprintf(w, "%s  key: %q\n", indent, k)
-			PrettyPrintBencodeValue(w, val, indentLevel+2)
+			prettyPrintBencodeValue(w, val, indentLevel+2)
 		}
 
 	default:
@@ -390,4 +384,4 @@ func encodeDictionary(w *bytes.Buffer, dictionary map[string]BencodeValue) error
 	return nil
 }
 
-// TODO: add a String() method to pretty-print BencodedValue
+// TODO: add README.md
