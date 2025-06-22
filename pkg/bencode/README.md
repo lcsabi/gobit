@@ -20,7 +20,7 @@ if err != nil {
 	log.Fatal(err)
 }
 
-fmt.Println(bencode.ToString(value)) // Pretty print
+fmt.Println(bencode.ToString(value))
 ```
 
 ### Encoding
@@ -82,4 +82,4 @@ dictionary:
 
 ## TODO
 
-- Add streaming `Decoder` type
+- Add streaming `Decoder` type for parsing torrent files that exceed 1MB
