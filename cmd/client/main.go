@@ -4,22 +4,18 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/lcsabi/gobit/pkg/bencode"
 )
 
 func main() {
-	fmt.Println("Hello, world!")
-	file, err := os.Open("D:\\devstuff\\projects\\gobit\\cmd\\client\\multifile_test.torrent")
+	f, _ := os.Open("D:\\devstuff\\projects\\gobit\\cmd\\client\\example.torrent")
+	value, err := bencode.Decode(f)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
-	content, err := bencode.Decode(file)
-	if err != nil {
-		fmt.Println(err)
-	}
-	contents := content.(map[string]bencode.BencodeValue)
-	infoDict := contents["info"].(map[string]bencode.BencodeValue)
-	fmt.Printf("%#v\n", infoDict["files"])
+
+	fmt.Println(bencode.ToString(value))
 }
