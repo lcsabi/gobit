@@ -1,6 +1,6 @@
 # bencode
 
-This package implements a Bencode encoder and decoder as defined in the [BitTorrent Specification](https://wiki.theory.org/BitTorrentSpecification#Bencoding).
+This package implements a performant Bencode encoder and decoder as defined in the [BitTorrent Specification](https://wiki.theory.org/BitTorrentSpecification#Bencoding).
 
 ## Features
 
