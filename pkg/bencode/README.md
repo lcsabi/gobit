@@ -23,6 +23,26 @@ if err != nil {
 fmt.Println(bencode.ToString(value))
 ```
 
+For structured inspection or for debugging purposes:
+
+```go
+fmt.Println(bencode.ToString(data))
+```
+
+Prints:
+
+```
+dictionary:
+  key: "announce"
+    string: "http://tracker.example.com/announce"
+  key: "info"
+    dictionary:
+      key: "length"
+        integer: 12345
+      key: "name"
+        string: "example.txt"
+```
+
 ### Encoding
 
 You can encode Go data into bencoded format using `Encode` or `EncodeTo`.
@@ -48,28 +68,6 @@ fmt.Printf("Bencoded output: %s\n", encoded)
 
 ```
 Bencoded output: d8:announce36:http://tracker.example.com/announce4:infod6:lengthi12345e4:name11:example.txte
-```
-
-### Debugging
-
-For structured inspection:
-
-```go
-fmt.Println(bencode.ToString(data))
-```
-
-Prints:
-
-```
-dictionary:
-  key: "announce"
-    string: "http://tracker.example.com/announce"
-  key: "info"
-    dictionary:
-      key: "length"
-        integer: 12345
-      key: "name"
-        string: "example.txt"
 ```
 
 ## Types
