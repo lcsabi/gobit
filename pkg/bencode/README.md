@@ -4,10 +4,21 @@ This package implements a performant Bencode encoder and decoder as defined in t
 
 ## Features
 
-- Full support for byte strings, integers, lists, and dictionaries
-- Streaming-friendly parser using `bytes.Reader`
-- Pretty-print and type-inspection utilities
-- Robust validation (e.g. leading zeros, negative zero, max byte string length)
+- Full support for bencoded types:
+  - Byte strings (`BencodeByteString`)
+  - Integers (`BencodeInteger`)
+  - Lists (`BencodeList`)
+  - Dictionaries (`BencodeDictionary`)
+- Streaming-friendly parser using `bytes.Reader` for scalability
+- Pretty-printer (`ToString`) for human-readable debugging
+- Type introspection utility (`TypeOf`)
+- Secure and robust decoding:
+  - Enforces integer format (no leading zeros or negative zero)
+  - Rejects malformed or unknown types
+  - Limits byte string length to prevent memory exhaustion (default: 10MB)
+- Deterministic dictionary encoding (keys are sorted)
+- Allocates efficiently using reusable buffers (via `EncodeTo`)
+- Idiomatic Go API for general-purpose use beyond `.torrent` files
 
 ## Usage
 
