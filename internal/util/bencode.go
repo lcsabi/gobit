@@ -7,23 +7,36 @@ import (
 	"io"
 	"sort"
 	"strconv"
+	"strings"
 )
 
-// BencodedValue represents every possible value that can be parsed from a bencoded byte array.
+// BencodeValue represents every possible value that can be parsed from a bencoded byte array.
 //
 // As per specification, it supports the following types: byte strings, integers, lists, and dictionaries.
 //
 // Reference: https://wiki.theory.org/BitTorrentSpecification#Bencoding
-type BencodedValue any
+type BencodeValue any
+
+// BencodeByteString represents a bencoded byte string (always UTF-8 decoded).
+type BencodeByteString = string
+
+// BencodeInteger represents a bencoded integer.
+type BencodeInteger = int64
+
+// BencodeList represents a bencoded list of values.
+type BencodeList = []BencodeValue
+
+// BencodeDictionary represents a bencoded dictionary with string keys and bencoded values.
+type BencodeDictionary = map[string]BencodeValue
 
 // Decode reads bencoded data from the provided io.Reader and returns the
 // corresponding Go representation as a BencodedValue.
 //
-// The returned BencodedValue is one of the following supported Go types:
-//   - string                    -> for bencoded byte strings
-//   - int64                     -> for bencoded integers
-//   - []BencodedValue           -> for bencoded lists
-//   - map[string]BencodedValue  -> for bencoded dictionaries
+// The returned BencodedValue is one of the following:
+//   - BencodeByteString (string)
+//   - BencodeInteger (int64)
+//   - BencodeList ([]BencodedValue)
+//   - BencodeDictionary (map[string]BencodedValue)
 //
 // Internally, Decode reads the entire input into memory using io.ReadAll,
 // which is suitable for typical .torrent files under 1MB. For large inputs
@@ -32,7 +45,7 @@ type BencodedValue any
 // Returns an error if the input is invalid or unreadable.
 //
 // Reference: https://wiki.theory.org/BitTorrentSpecification#Bencoding
-func Decode(r io.Reader) (BencodedValue, error) {
+func Decode(r io.Reader) (BencodeValue, error) {
 	// TODO: optimize decoding for large torrent files and magnet links by introducing a Decoder type
 	data, err := io.ReadAll(r) // ! possible bottleneck
 	if err != nil {
@@ -56,7 +69,7 @@ func Decode(r io.Reader) (BencodedValue, error) {
 //   - map[string]BencodedValue -> encoded as a dictionary (keys are sorted lexicographically)
 //
 // Reference: https://wiki.theory.org/BitTorrentSpecification#Bencoding
-func Encode(val BencodedValue) ([]byte, error) {
+func Encode(val BencodeValue) ([]byte, error) {
 	var buf bytes.Buffer
 	err := EncodeTo(&buf, val)
 	if err != nil {
@@ -75,26 +88,80 @@ func Encode(val BencodedValue) ([]byte, error) {
 // Returns an error if the input type is unsupported.
 //
 // Reference: https://wiki.theory.org/BitTorrentSpecification#Bencoding
-func EncodeTo(w *bytes.Buffer, rawInput BencodedValue) error {
+func EncodeTo(w *bytes.Buffer, rawInput BencodeValue) error {
 	switch input := rawInput.(type) {
 	case []byte:
 		return encodeByteString(w, string(input))
+
 	case string:
 		return encodeByteString(w, input)
+
 	case int:
 		return encodeInteger(w, int64(input))
+
 	case int64:
 		return encodeInteger(w, input)
-	case []BencodedValue:
+
+	case []BencodeValue:
 		return encodeList(w, input)
-	case map[string]BencodedValue:
+
+	case map[string]BencodeValue:
 		return encodeDictionary(w, input)
+
 	default:
 		return fmt.Errorf("unsupported type %T", input)
 	}
 }
 
-func parseBencode(r *bytes.Reader) (BencodedValue, error) {
+func TypeOf(value BencodeValue) string {
+	switch value.(type) {
+	case BencodeByteString:
+		return "byte string"
+
+	case BencodeInteger:
+		return "integer"
+
+	case BencodeList:
+		return "list"
+
+	case BencodeDictionary:
+		return "dictionary"
+
+	default:
+		return "unknown"
+	}
+}
+
+func PrettyPrintBencodeValue(w io.Writer, value BencodeValue, indentLevel int) {
+	indent := strings.Repeat("  ", indentLevel)
+
+	switch v := value.(type) {
+	case BencodeByteString:
+		fmt.Fprintf(w, "%sstring: %q\n", indent, v)
+
+	case BencodeInteger:
+		fmt.Fprintf(w, "%sinteger: %d\n", indent, v)
+
+	case BencodeList:
+		fmt.Fprintf(w, "%slist:\n", indent)
+		for i, item := range v {
+			fmt.Fprintf(w, "%s  [%d]:\n", indent, i)
+			PrettyPrintBencodeValue(w, item, indentLevel+2)
+		}
+
+	case BencodeDictionary:
+		fmt.Fprintf(w, "%sdictionary:\n", indent)
+		for k, val := range v {
+			fmt.Fprintf(w, "%s  key: %q\n", indent, k)
+			PrettyPrintBencodeValue(w, val, indentLevel+2)
+		}
+
+	default:
+		fmt.Fprintf(w, "%sunknown type: %T (%v)\n", indent, v, v)
+	}
+}
+
+func parseBencode(r *bytes.Reader) (BencodeValue, error) {
 	// read beginning delimiter
 	delimiter, err := r.ReadByte()
 	if err != nil {
@@ -104,19 +171,23 @@ func parseBencode(r *bytes.Reader) (BencodedValue, error) {
 	switch {
 	case delimiter == 'i':
 		return decodeInteger(r)
+
 	case delimiter >= '0' && delimiter <= '9':
 		// delimiter is also the first digit of the byte string's length
 		return decodeByteString(r, delimiter)
+
 	case delimiter == 'l':
 		return decodeList(r)
+
 	case delimiter == 'd':
 		return decodeDictionary(r)
+
 	default:
 		return nil, fmt.Errorf("invalid bencode prefix: %c", delimiter)
 	}
 }
 
-func decodeByteString(r *bytes.Reader, firstDigit byte) (string, error) {
+func decodeByteString(r *bytes.Reader, firstDigit byte) (BencodeByteString, error) {
 	// read the length of the byte string
 	var buffer bytes.Buffer
 	buffer.WriteByte(firstDigit)
@@ -153,7 +224,7 @@ func decodeByteString(r *bytes.Reader, firstDigit byte) (string, error) {
 	return string(byteString), nil
 }
 
-func decodeInteger(r *bytes.Reader) (int64, error) {
+func decodeInteger(r *bytes.Reader) (BencodeInteger, error) {
 	var buffer bytes.Buffer
 	first := true
 
@@ -198,8 +269,8 @@ func decodeInteger(r *bytes.Reader) (int64, error) {
 	return strconv.ParseInt(buffer.String(), 10, 64)
 }
 
-func decodeList(r *bytes.Reader) ([]BencodedValue, error) {
-	var values []BencodedValue
+func decodeList(r *bytes.Reader) (BencodeList, error) {
+	var values []BencodeValue
 	for {
 		delimiter, err := r.ReadByte() // peek next type
 		if err != nil {
@@ -223,8 +294,8 @@ func decodeList(r *bytes.Reader) ([]BencodedValue, error) {
 	return values, nil
 }
 
-func decodeDictionary(r *bytes.Reader) (map[string]BencodedValue, error) {
-	values := make(map[string]BencodedValue)
+func decodeDictionary(r *bytes.Reader) (BencodeDictionary, error) {
+	values := make(map[string]BencodeValue)
 	for {
 		delimiter, err := r.ReadByte() // peek next type
 		if err != nil {
@@ -279,7 +350,7 @@ func encodeInteger(w *bytes.Buffer, value int64) error {
 	return nil
 }
 
-func encodeList(w *bytes.Buffer, list []BencodedValue) error {
+func encodeList(w *bytes.Buffer, list []BencodeValue) error {
 	w.WriteByte('l') // beginning delimiter for a list
 	for _, item := range list {
 		if err := EncodeTo(w, item); err != nil {
@@ -291,7 +362,7 @@ func encodeList(w *bytes.Buffer, list []BencodedValue) error {
 	return nil
 }
 
-func encodeDictionary(w *bytes.Buffer, dictionary map[string]BencodedValue) error {
+func encodeDictionary(w *bytes.Buffer, dictionary map[string]BencodeValue) error {
 	w.WriteByte('d') // beginning delimiter for a dictionary
 	keys := make([]string, 0, len(dictionary))
 	for k := range dictionary {
