@@ -3,19 +3,9 @@
 package main
 
 import (
-	"fmt"
-	"log"
-	"os"
-
-	"github.com/lcsabi/gobit/pkg/bencode"
+	"github.com/lcsabi/gobit/internal/torrent"
 )
 
 func main() {
-	f, _ := os.Open("D:\\devstuff\\projects\\gobit\\cmd\\client\\example.torrent")
-	value, err := bencode.Decode(f)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Println(bencode.ToString(value))
+	torrent.Parse("D:\\devstuff\\projects\\gobit\\cmd\\client\\single.example.torrent")
 }
