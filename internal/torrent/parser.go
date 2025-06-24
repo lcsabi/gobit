@@ -52,8 +52,11 @@ func Parse(path string) (*TorrentFile, error) {
 		return nil, fmt.Errorf("invalid torrent structure")
 	}
 
-	// Parse announce URL
-	announce := root["announce"]
+	// parse announce URL
+	announce, ok := root["asd"].(string)
+	if !ok {
+		return nil, fmt.Errorf("announce URL for the tracker not found or invalid: %T (%v)", announce, announce)
+	}
 	fmt.Println(announce)
 
 	return nil, nil
