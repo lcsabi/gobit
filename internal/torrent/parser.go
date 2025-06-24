@@ -32,8 +32,12 @@ type FileInfo struct {
 	Path   []string // a list containing one or more string elements that together represent the path and filename, required
 }
 
-func (t TorrentFile) IsMultiFile() bool {
-	return len(t.Info.Files) > 1
+func (d *InfoDict) IsMultiFile() bool {
+	return len(d.Files) > 1
+}
+
+func (t *TorrentFile) IsMultiFile() bool {
+	return t.Info.IsMultiFile()
 }
 
 func Parse(path string) (*TorrentFile, error) {
