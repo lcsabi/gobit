@@ -323,7 +323,7 @@ func TestEncodeDictionary(t *testing.T) {
 
 // TestEncode performs end-to-end encoding of a complex, nested bencoded dictionary.
 func TestEncode(t *testing.T) {
-	input := map[string]BencodeValue{
+	input := BencodeDictionary{
 		"announce":   "http://tracker.example.com",
 		"created by": "ExampleClient",
 		"info": map[string]BencodeValue{
