@@ -271,7 +271,7 @@ func decodeInteger(r *bytes.Reader) (BencodeInteger, error) {
 }
 
 func decodeList(r *bytes.Reader) (BencodeList, error) {
-	var values []BencodeValue
+	var values BencodeList
 	for {
 		delimiter, err := r.ReadByte() // peek next type
 		if err != nil {
