@@ -58,7 +58,7 @@ func Decode(r io.Reader) (Value, error) {
 // Supported value types include:
 //   - string or []byte → encoded as byte strings
 //   - int or int64     → encoded as integers
-//   - []Value   → encoded as a list
+//   - []Value   		→ encoded as a list
 //   - map[string]Value → encoded as a dictionary with sorted keys
 //
 // The encoded data is returned as a new byte slice.
