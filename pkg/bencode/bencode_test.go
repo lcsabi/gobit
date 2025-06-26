@@ -100,12 +100,12 @@ func TestDecodeInvalidByteString(t *testing.T) {
 func TestParseList(t *testing.T) {
 	testCases := []struct {
 		input    string
-		expected []BencodeValue
+		expected []Value
 	}{
-		{"l4:spam4:eggse", []BencodeValue{"spam", "eggs"}},
+		{"l4:spam4:eggse", []Value{"spam", "eggs"}},
 		{"le", nil},
-		{"li1ei20e4:spame", []BencodeValue{int64(1), int64(20), "spam"}},
-		{"l3:mooi42ee", []BencodeValue{"moo", int64(42)}},
+		{"li1ei20e4:spame", []Value{int64(1), int64(20), "spam"}},
+		{"l3:mooi42ee", []Value{"moo", int64(42)}},
 	}
 
 	for _, tc := range testCases {
@@ -145,11 +145,11 @@ func TestDecodeInvalidList(t *testing.T) {
 func TestParseDictionary(t *testing.T) {
 	testCases := []struct {
 		input    string
-		expected BencodeDictionary
+		expected Dictionary
 	}{
-		{"d3:cow3:moo4:spam4:eggse", BencodeDictionary{"cow": "moo", "spam": "eggs"}},
-		{"de", BencodeDictionary{}},
-		{"d4:spaml1:a1:be3:inti3ee", BencodeDictionary{"spam": BencodeList{"a", "b"}, "int": int64(3)}},
+		{"d3:cow3:moo4:spam4:eggse", Dictionary{"cow": "moo", "spam": "eggs"}},
+		{"de", Dictionary{}},
+		{"d4:spaml1:a1:be3:inti3ee", Dictionary{"spam": List{"a", "b"}, "int": int64(3)}},
 	}
 
 	for _, tc := range testCases {
@@ -190,14 +190,14 @@ func TestDecodeInvalidDictionary(t *testing.T) {
 func TestDecode(t *testing.T) {
 	testCases := []struct {
 		input    string
-		expected BencodeDictionary
+		expected Dictionary
 	}{
 		{
 			input: "d8:announce26:http://tracker.example.com10:created by13:ExampleClient4:infod6:lengthi123456e4:name13:test_file.txt12:piece lengthi262144e6:pieces20:aaaaaaaaaaaaaaaaaaaaee",
-			expected: BencodeDictionary{
+			expected: Dictionary{
 				"announce":   "http://tracker.example.com",
 				"created by": "ExampleClient",
-				"info": BencodeDictionary{
+				"info": Dictionary{
 					"length":       int64(123456),
 					"name":         "test_file.txt",
 					"piece length": int64(262144),
@@ -287,7 +287,7 @@ func TestEncodeInteger(t *testing.T) {
 
 // TestEncodeList verifies encoding of lists containing strings and integers into bencode format.
 func TestEncodeList(t *testing.T) {
-	list := []BencodeValue{"spam", "eggs", 42}
+	list := []Value{"spam", "eggs", 42}
 
 	var buf bytes.Buffer
 	err := encodeList(&buf, list)
@@ -303,7 +303,7 @@ func TestEncodeList(t *testing.T) {
 
 // TestEncodeDictionary verifies encoding of dictionaries with string and integer values into bencode format.
 func TestEncodeDictionary(t *testing.T) {
-	dict := map[string]BencodeValue{
+	dict := map[string]Value{
 		"cow":   "moo",
 		"spam":  "eggs",
 		"count": 42,
@@ -323,10 +323,10 @@ func TestEncodeDictionary(t *testing.T) {
 
 // TestEncode performs end-to-end encoding of a complex, nested bencoded dictionary.
 func TestEncode(t *testing.T) {
-	input := BencodeDictionary{
+	input := Dictionary{
 		"announce":   "http://tracker.example.com",
 		"created by": "ExampleClient",
-		"info": map[string]BencodeValue{
+		"info": map[string]Value{
 			"length":       int64(123456),
 			"name":         "test_file.txt",
 			"piece length": int64(262144),
@@ -348,13 +348,13 @@ func TestEncode(t *testing.T) {
 func TestTypeOf(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    BencodeValue
+		input    Value
 		expected string
 	}{
-		{"String", BencodeByteString("hello"), "byte string"},
-		{"Integer", BencodeInteger(42), "integer"},
-		{"List", BencodeList{"spam"}, "list"},
-		{"Dictionary", BencodeDictionary{}, "dictionary"},
+		{"String", ByteString("hello"), "byte string"},
+		{"Integer", Integer(42), "integer"},
+		{"List", List{"spam"}, "list"},
+		{"Dictionary", Dictionary{}, "dictionary"},
 		{"Unknown", struct{}{}, "unknown"},
 	}
 

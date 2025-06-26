@@ -134,6 +134,7 @@ func ToString(value Value) string {
 }
 
 // TODO: test
+// write error is not checked because we are always writing to a strings.Builder
 func prettyPrintValue(w io.Writer, value Value, indentLevel int) {
 	indent := strings.Repeat("  ", indentLevel)
 
@@ -164,8 +165,7 @@ func prettyPrintValue(w io.Writer, value Value, indentLevel int) {
 }
 
 func parseBencode(r *bytes.Reader) (Value, error) {
-	// read beginning delimiter
-	delimiter, err := r.ReadByte()
+	delimiter, err := r.ReadByte() // read beginning delimiter
 	if err != nil {
 		return nil, err
 	}
@@ -175,8 +175,7 @@ func parseBencode(r *bytes.Reader) (Value, error) {
 		return decodeInteger(r)
 
 	case delimiter >= '0' && delimiter <= '9':
-		// delimiter is also the first digit of the byte string's length
-		return decodeByteString(r, delimiter)
+		return decodeByteString(r, delimiter) // delimiter is also the first digit of the byte string's length
 
 	case delimiter == 'l':
 		return decodeList(r)
@@ -216,8 +215,7 @@ func decodeByteString(r *bytes.Reader, firstDigit byte) (ByteString, error) {
 		return "", fmt.Errorf("byte string length too large: %d", byteStringLength)
 	}
 
-	// read the byte string itself
-	byteString := make([]byte, byteStringLength)
+	byteString := make([]byte, byteStringLength) // read the byte string itself
 	_, err = io.ReadFull(r, byteString)
 	if err != nil {
 		return "", err
@@ -250,10 +248,9 @@ func decodeInteger(r *bytes.Reader) (Integer, error) {
 				return 0, fmt.Errorf("leading zero in integer")
 			}
 
-			// defensive unread, panic should not happen because
-			// we guarantee to read a byte before unreading
+			// defensive unread, panic should not happen because we guarantee to read a byte before unreading
 			if err := r.UnreadByte(); err != nil {
-				return 0, fmt.Errorf("unread error: %w", err)
+				return 0, fmt.Errorf("unread error while decoding integer: %w", err)
 			}
 		}
 
@@ -284,7 +281,11 @@ func decodeList(r *bytes.Reader) (List, error) {
 			break
 		}
 
-		r.UnreadByte() // unread to properly identify next type
+		// defensive unread to properly identify next type
+		// panic should not happen because we guarantee to read a byte before unreading
+		if err := r.UnreadByte(); err != nil {
+			return nil, fmt.Errorf("unread error while decoding integer: %w", err)
+		}
 		element, err := parseBencode(r)
 		if err != nil {
 			return nil, err
@@ -307,7 +308,11 @@ func decodeDictionary(r *bytes.Reader) (Dictionary, error) {
 		if delimiter == 'e' {
 			break
 		}
-		r.UnreadByte() // unread to properly identify next type
+		// defensive unread to properly identify next type
+		// panic should not happen because we guarantee to read a byte before unreading
+		if err := r.UnreadByte(); err != nil {
+			return nil, fmt.Errorf("unread error while decoding integer: %w", err)
+		}
 
 		// parse the key
 		key, err := parseBencode(r)
