@@ -133,6 +133,7 @@ func ToString(value BencodeValue) string {
 	return sb.String()
 }
 
+// TODO: test
 func prettyPrintBencodeValue(w io.Writer, value BencodeValue, indentLevel int) {
 	indent := strings.Repeat("  ", indentLevel)
 
