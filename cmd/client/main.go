@@ -9,8 +9,9 @@ import (
 )
 
 func main() {
-	_, err := torrent.Parse("D:\\devstuff\\projects\\gobit\\cmd\\client\\single.example.torrent")
+	file, err := torrent.Parse("D:\\devstuff\\projects\\gobit\\cmd\\client\\single.example.torrent")
 	if err != nil {
 		fmt.Println(err)
 	}
+	fmt.Printf("%#v", file)
 }
