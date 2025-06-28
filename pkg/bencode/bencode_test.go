@@ -369,3 +369,4 @@ func TestTypeOf(t *testing.T) {
 }
 
 // TODO: implement benchmarking
+// TODO: add testing ToString
