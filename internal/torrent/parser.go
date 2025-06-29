@@ -9,28 +9,29 @@ import (
 )
 
 // TODO: reorder struct fields for memory efficiency, visualize with structlayout
+// TODO: make sure to parse the required fields first, and the quickest ones from those for efficiency
 
-// TorrentFile represents the root structure of a .torrent file.
+// File represents the root structure of a .torrent file.
 // It includes tracker URLs, metadata, and optional attributes such as comments or encoding.
 // Reference: https://wiki.theory.org/BitTorrentSpecification#Metainfo_File_Structure
-type TorrentFile struct {
+type File struct {
 	Info         InfoDict   // info dictionary that describes the file(s) to be shared (required)
+	InfoHash     [20]byte   // SHA-1 hash of the bencoded 'info' dictionary used as the unique identifier (required)
 	Announce     string     // primary tracker URL (required)
-	InfoHash     [20]byte   // SHA-1 hash of the bencoded 'info' dictionary. Used as the unique identifier of the torrent
 	AnnounceList [][]string // tiered list of alternative tracker URLs (optional)
 	CreationDate int64      // creation time as a UNIX timestamp (optional)
 	Comment      string     // free-form comment added by the torrent creator (optional)
 	CreatedBy    string     // name and version of the program that created the torrent (optional)
-	Encoding     string     // text encoding used for strings (optional)
+	Encoding     string     // used to generate the pieces part of the info dictionary (optional)
 }
 
 // InfoDict represents the "info" dictionary in the .torrent file.
 // It contains file layout, piece information, and privacy flag.
 type InfoDict struct {
-	PieceLength int64      // number of bytes per piece (required)
-	Pieces      [][20]byte // SHA-1 hashes of each piece, sliced into 20-byte blocks (required)
 	Name        string     // directory name (multi-file mode) or file name (single-file mode) (required)
 	Files       []FileInfo // list of files (single-entry in single-file mode; multiple in multi-file mode)
+	PieceLength int64      // number of bytes per piece (required)
+	Pieces      [][20]byte // SHA-1 hashes of each piece, sliced into 20-byte blocks (required)
 	Private     *int64     // if 1, restricts peer discovery to trackers only (optional)
 }
 
@@ -38,84 +39,48 @@ type InfoDict struct {
 // Each file includes its length and a path split into components.
 type FileInfo struct {
 	Length int64    // file size in bytes (required)
-	Path   []string // file path as a slice of components (e.g., ["dir", "subdir", "file.ext"]) (required)
+	Path   []string // file path as a slice of components (required)
 }
 
 // TODO: implement NumPieces, FullPath, or TotalLength methods
-func (d *InfoDict) IsMultiFile() bool {
-	return len(d.Files) > 1
+
+func (i *InfoDict) IsMultiFile() bool {
+	return len(i.Files) > 1
 }
 
-func (t *TorrentFile) IsMultiFile() bool {
+func (t *File) IsMultiFile() bool {
 	return t.Info.IsMultiFile()
 }
 
-func Parse(path string) (*TorrentFile, error) {
+func Parse(path string) (*File, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-
 	decodedData, err := bencode.Decode(bytes.NewReader(data))
 	if err != nil {
 		return nil, err
 	}
-
-	root, ok := decodedData.(bencode.BencodeDictionary)
+	root, ok := decodedData.(bencode.Dictionary)
 	if !ok {
 		return nil, fmt.Errorf("invalid torrent structure")
 	}
-
-	result := TorrentFile{} // the return value that needs to be populated
+	result := &File{}
 
 	// announce
-	raw, exists := root["announce"]
-	if !exists {
-		return nil, fmt.Errorf("'announce' not found")
+	if err := result.parseAnnounce(root); err != nil {
+		return nil, err
 	}
-	announce, ok := raw.(string)
-	if !ok {
-		return nil, fmt.Errorf("expected 'announce' to be a string, got %T", raw)
-	}
-	result.Announce = announce // append to result
 
 	// info
-	infoDictionary := InfoDict{}
-	raw, exists = root["info"]
-	if !exists {
-		return nil, fmt.Errorf("'info' dictionary not found")
-	}
-	rootDict, ok := raw.(bencode.BencodeDictionary)
-	if !ok {
-		return nil, fmt.Errorf("expected 'info' to be a dictionary, got %T", raw)
+	if err := result.parseInfo(root); err != nil {
+		return nil, err
 	}
 
-	// TODO: hash the bencoded info dictionary into InfoHash
-
-	// piece length
-	raw, exists = rootDict["piece length"]
-	if !exists {
-		return nil, fmt.Errorf("'piece length' not found")
-	}
-	pieceLength, ok := raw.(int64)
-	if !ok {
-		return nil, fmt.Errorf("expected 'piece length' to be an int64, got %T", raw)
-	}
-	infoDictionary.PieceLength = pieceLength
+	// TODO: hash the bencoded info dictionary into InfoHash, probably do this last after torrent is parsed
 
 	// pieces
 	// TODO: split the pieces string into [][20]byte
-
-	// name
-	raw, exists = rootDict["name"]
-	if !exists {
-		return nil, fmt.Errorf("'name' not found")
-	}
-	name, ok := raw.(string)
-	if !ok {
-		return nil, fmt.Errorf("expected 'name' to be a string, got %T", raw)
-	}
-	infoDictionary.Name = name
 
 	// files
 	filesList := []FileInfo{}
@@ -126,11 +91,11 @@ func Parse(path string) (*TorrentFile, error) {
 		// parse single-file
 		raw, exists = rootDict["length"]
 		if !exists {
-			return nil, fmt.Errorf("'length' not found")
+			return nil, fmt.Errorf("'length' key not found")
 		}
 		length, ok := raw.(int64)
 		if !ok {
-			return nil, fmt.Errorf("expected 'length' to be an int64, got %T", raw)
+			return nil, fmt.Errorf("expected 'length' value to be an int64, got %T", raw)
 		}
 		filesList = append(filesList, FileInfo{
 			Length: length,
@@ -143,20 +108,6 @@ func Parse(path string) (*TorrentFile, error) {
 
 	}
 	infoDictionary.Files = filesList
-
-	// parse private
-	raw, exists = rootDict["private"]
-	if !exists {
-		fmt.Println("'private' not found")
-	} else {
-		private, ok := raw.(int64)
-		if !ok {
-			return nil, fmt.Errorf("expected 'private' to be an int64, got %T", raw)
-		} else {
-			infoDictionary.Private = &private
-		}
-	}
-	result.Info = infoDictionary // append to result
 
 	// parse announce-list
 	// TODO: implement order of processing logic
@@ -244,5 +195,108 @@ func Parse(path string) (*TorrentFile, error) {
 		}
 	}
 
-	return &result, nil
+	return result, nil
+}
+
+func (t *File) parseAnnounce(root bencode.Dictionary) error {
+	raw, exists := root["announce"]
+	if !exists {
+		return fmt.Errorf("'announce' key not found")
+	}
+	announce, ok := raw.(string)
+	if !ok {
+		return fmt.Errorf("expected 'announce' value to be a string, got %T", raw)
+	}
+	t.Announce = announce
+
+	return nil
+}
+
+func (t *File) parseInfo(root bencode.Dictionary) error {
+	infoDictionary := InfoDict{}
+	raw, exists := root["info"]
+	if !exists {
+		return fmt.Errorf("'info' key not found")
+	}
+	info, ok := raw.(bencode.Dictionary)
+	if !ok {
+		return fmt.Errorf("expected 'info' value to be a dictionary, got %T", raw)
+	}
+
+	// piece length
+	if err := infoDictionary.parsePieceLength(info); err != nil {
+		return err
+	}
+
+	// name
+	if err := infoDictionary.parseName(info); err != nil {
+		return err
+	}
+
+	// files
+	if err := infoDictionary.parseFiles(info); err != nil {
+		return err
+	}
+
+	// pieces
+
+	// private
+	if err := infoDictionary.parsePrivate(info); err != nil {
+		return err
+	}
+
+	t.Info = infoDictionary
+
+	return nil
+}
+
+func (i *InfoDict) parsePieceLength(infoRoot bencode.Dictionary) error {
+	raw, exists := infoRoot["piece length"]
+	if !exists {
+		return fmt.Errorf("'piece length' key not found")
+	}
+	pieceLength, ok := raw.(int64)
+	if !ok {
+		return fmt.Errorf("expected 'piece length' value to be an int64, got %T", raw)
+	}
+	i.PieceLength = pieceLength
+
+	return nil
+}
+
+func (i *InfoDict) parseName(infoRoot bencode.Dictionary) error {
+	raw, exists := infoRoot["name"]
+	if !exists {
+		return fmt.Errorf("'name' key not found")
+	}
+	name, ok := raw.(string)
+	if !ok {
+		return fmt.Errorf("expected 'name' value to be a string, got %T", raw)
+	}
+	i.Name = name
+
+	return nil
+}
+
+func (i *InfoDict) parseFiles(infoRoot bencode.Dictionary) error {
+	fileInfoList := []FileInfo{}
+	// ! continue here
+	i.Files = fileInfoList
+	return nil
+}
+
+func (i *InfoDict) parsePrivate(infoRoot bencode.Dictionary) error {
+	raw, exists := infoRoot["private"]
+	if !exists {
+		fmt.Println("'private' key not found")
+	} else {
+		private, ok := raw.(int64)
+		if !ok {
+			return fmt.Errorf("expected 'private' value to be an int64, got %T", raw)
+		} else {
+			i.Private = &private
+		}
+	}
+
+	return nil
 }
