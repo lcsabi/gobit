@@ -368,5 +368,7 @@ func TestTypeOf(t *testing.T) {
 	}
 }
 
-// TODO: implement benchmarking
+// TODO: implement benchmarking decode and encode
+// TODO: test large payloads (10MB+)
+// TODO: test maximum byte string length
 // TODO: add testing ToString
