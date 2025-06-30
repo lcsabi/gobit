@@ -146,7 +146,7 @@ func Parse(path string) (*File, error) {
 // =====================================================================================
 
 func (t *File) parseAnnounce(root bencode.Dictionary) error {
-	raw, exists := root["announce"]
+	raw, exists := root[keyAnnounce]
 	if !exists {
 		return errors.New("'announce' key not found")
 	}
@@ -161,7 +161,7 @@ func (t *File) parseAnnounce(root bencode.Dictionary) error {
 
 func (t *File) parseInfo(root bencode.Dictionary) error {
 	var infoDictionary InfoDict
-	raw, exists := root["info"]
+	raw, exists := root[keyInfo]
 	if !exists {
 		return errors.New("'info' key not found")
 	}
@@ -200,7 +200,7 @@ func (t *File) parseInfo(root bencode.Dictionary) error {
 }
 
 func (i *InfoDict) parseName(infoRoot bencode.Dictionary) error {
-	raw, exists := infoRoot["name"]
+	raw, exists := infoRoot[keyName]
 	if !exists {
 		return errors.New("'name' key not found")
 	}
@@ -215,7 +215,7 @@ func (i *InfoDict) parseName(infoRoot bencode.Dictionary) error {
 
 func (i *InfoDict) parseFiles(infoRoot bencode.Dictionary) error {
 	var fileInfoList []FileInfo
-	raw, exists := infoRoot["files"]
+	raw, exists := infoRoot[keyFiles]
 	if !exists {
 		// Single-file mode
 		fmt.Println("single-file mode torrent") // TODO: change to log or remove
@@ -262,7 +262,7 @@ func (i *InfoDict) parseFiles(infoRoot bencode.Dictionary) error {
 }
 
 func (i *InfoDict) parsePieceLength(infoRoot bencode.Dictionary) error {
-	raw, exists := infoRoot["piece length"]
+	raw, exists := infoRoot[keyPieceLength]
 	if !exists {
 		return errors.New("'piece length' key not found")
 	}
@@ -279,7 +279,7 @@ func (i *InfoDict) parsePieceLength(infoRoot bencode.Dictionary) error {
 // implement parsePieces() here
 
 func (i *InfoDict) parsePrivate(infoRoot bencode.Dictionary) error {
-	raw, exists := infoRoot["private"]
+	raw, exists := infoRoot[keyPrivate]
 	if !exists {
 		fmt.Println("'private' key not found") // TODO: change to log or remove
 	} else {
@@ -297,7 +297,7 @@ func (i *InfoDict) parsePrivate(infoRoot bencode.Dictionary) error {
 }
 
 func parseFileLength(root bencode.Dictionary) (bencode.Integer, error) {
-	raw, exists := root["length"]
+	raw, exists := root[keyLength]
 	if !exists {
 		return 0, errors.New("'length' key not found")
 	}
@@ -310,7 +310,7 @@ func parseFileLength(root bencode.Dictionary) (bencode.Integer, error) {
 }
 
 func parseFilePath(root bencode.Dictionary) ([]bencode.ByteString, error) {
-	raw, exists := root["path"]
+	raw, exists := root[keyPath]
 	if !exists {
 		return nil, errors.New("'path' key not found")
 	}
@@ -327,7 +327,7 @@ func parseFilePath(root bencode.Dictionary) ([]bencode.ByteString, error) {
 // TODO: AnnounceList
 
 func (t *File) parseCreationDate(root bencode.Dictionary) {
-	raw, exists := root["creation date"]
+	raw, exists := root[keyCreationDate]
 	if !exists {
 		fmt.Println("'creation date' not found") // TODO: change to log or remove
 	} else {
@@ -341,7 +341,7 @@ func (t *File) parseCreationDate(root bencode.Dictionary) {
 }
 
 func (t *File) parseComment(root bencode.Dictionary) {
-	raw, exists := root["comment"]
+	raw, exists := root[keyComment]
 	if !exists {
 		fmt.Println("'comment' not found") // TODO: change to log or remove
 	} else {
