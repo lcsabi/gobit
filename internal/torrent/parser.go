@@ -2,6 +2,7 @@ package torrent
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 
@@ -88,7 +89,7 @@ func Parse(path string) (*File, error) {
 	}
 	root, ok := decodedData.(bencode.Dictionary)
 	if !ok {
-		return nil, fmt.Errorf("invalid torrent structure")
+		return nil, errors.New("invalid torrent structure")
 	}
 	var result *File
 
@@ -147,7 +148,7 @@ func Parse(path string) (*File, error) {
 func (t *File) parseAnnounce(root bencode.Dictionary) error {
 	raw, exists := root["announce"]
 	if !exists {
-		return fmt.Errorf("'announce' key not found")
+		return errors.New("'announce' key not found")
 	}
 	announce, ok := raw.(bencode.ByteString)
 	if !ok {
@@ -162,7 +163,7 @@ func (t *File) parseInfo(root bencode.Dictionary) error {
 	var infoDictionary InfoDict
 	raw, exists := root["info"]
 	if !exists {
-		return fmt.Errorf("'info' key not found")
+		return errors.New("'info' key not found")
 	}
 	info, ok := raw.(bencode.Dictionary)
 	if !ok {
@@ -201,7 +202,7 @@ func (t *File) parseInfo(root bencode.Dictionary) error {
 func (i *InfoDict) parseName(infoRoot bencode.Dictionary) error {
 	raw, exists := infoRoot["name"]
 	if !exists {
-		return fmt.Errorf("'name' key not found")
+		return errors.New("'name' key not found")
 	}
 	name, ok := raw.(bencode.ByteString)
 	if !ok {
@@ -263,7 +264,7 @@ func (i *InfoDict) parseFiles(infoRoot bencode.Dictionary) error {
 func (i *InfoDict) parsePieceLength(infoRoot bencode.Dictionary) error {
 	raw, exists := infoRoot["piece length"]
 	if !exists {
-		return fmt.Errorf("'piece length' key not found")
+		return errors.New("'piece length' key not found")
 	}
 	pieceLength, ok := raw.(bencode.Integer)
 	if !ok {
@@ -295,10 +296,10 @@ func (i *InfoDict) parsePrivate(infoRoot bencode.Dictionary) error {
 	return nil
 }
 
-func parseFileLength(rootDict bencode.Dictionary) (bencode.Integer, error) {
-	raw, exists := rootDict["length"]
+func parseFileLength(root bencode.Dictionary) (bencode.Integer, error) {
+	raw, exists := root["length"]
 	if !exists {
-		return 0, fmt.Errorf("'length' key not found")
+		return 0, errors.New("'length' key not found")
 	}
 	length, ok := raw.(bencode.Integer)
 	if !ok {
@@ -308,10 +309,10 @@ func parseFileLength(rootDict bencode.Dictionary) (bencode.Integer, error) {
 	return length, nil
 }
 
-func parseFilePath(rootDict bencode.Dictionary) ([]bencode.ByteString, error) {
-	raw, exists := rootDict["path"]
+func parseFilePath(root bencode.Dictionary) ([]bencode.ByteString, error) {
+	raw, exists := root["path"]
 	if !exists {
-		return nil, fmt.Errorf("'path' key not found")
+		return nil, errors.New("'path' key not found")
 	}
 	path, ok := raw.([]bencode.ByteString)
 	if !ok {
