@@ -321,7 +321,7 @@ func (t *File) parseAnnounceList(root bencode.Dictionary) {
 	for tierCount, tierRaw := range rawList {
 		tierList, ok := tierRaw.(bencode.List)
 		if !ok {
-			fmt.Printf("parsing tier #%d: expected bencode.List, got %T\n", tierCount, tierRaw)
+			fmt.Printf("parsing tier #%d: expected bencode.List, got %T\n", tierCount, tierRaw) // TODO: change to log or remove
 			continue
 		}
 
@@ -329,7 +329,7 @@ func (t *File) parseAnnounceList(root bencode.Dictionary) {
 		for urlCount, urlRaw := range tierList {
 			urlStr, ok := urlRaw.(bencode.ByteString)
 			if !ok {
-				fmt.Printf("parsing URL #%d in tier #%d: expected string, got %T\n", tierCount, urlCount, urlRaw)
+				fmt.Printf("parsing URL #%d in tier #%d: expected string, got %T\n", tierCount, urlCount, urlRaw) // TODO: change to log or remove
 				continue
 			}
 			urls = append(urls, urlStr)
@@ -352,7 +352,7 @@ func (t *File) parseCreationDate(root bencode.Dictionary) {
 
 	creationDate, ok := raw.(bencode.Integer)
 	if !ok {
-		fmt.Printf("parsing '%s': expected bencode.Integer, got %T\n", keyCreationDate, raw)
+		fmt.Printf("parsing '%s': expected bencode.Integer, got %T\n", keyCreationDate, raw) // TODO: change to log or remove
 		return
 	}
 
