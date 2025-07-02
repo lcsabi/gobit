@@ -339,10 +339,10 @@ func (t *File) parseAnnounceList(root bencode.Dictionary) {
 		for urlIdx, urlRaw := range tier {
 			url, ok := urlRaw.(bencode.ByteString)
 			if !ok {
-				fmt.Printf("tier %d, url %d: expected string, got %T\n", tierIdx, urlIdx, urlRaw)
+				fmt.Printf("tier %d, url %d: expected bencode.ByteString, got %T\n", tierIdx, urlIdx, urlRaw)
 				continue
 			}
-			urls = append(urls, string(url))
+			urls = append(urls, url)
 		}
 
 		if len(urls) > 0 {
