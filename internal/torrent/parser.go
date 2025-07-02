@@ -2,13 +2,14 @@ package torrent
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/lcsabi/gobit/pkg/bencode"
 )
 
+// store dictionary keys
 const (
 	// root-level keys
 	keyInfo         = "info"
@@ -79,19 +80,27 @@ func (i *InfoDict) IsMultiFile() bool {
 }
 
 func Parse(path string) (*File, error) {
-	data, err := os.ReadFile(path)
+	// TODO: check that the file extension is .torrent (defensive UX)
+	// TODO: reformat cleaning path, verifying extension and reading file into a function
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve absolute path: %w", err)
+	}
+	parsedPath := filepath.Clean(absPath)
+	data, err := os.ReadFile(parsedPath)
 	if err != nil {
 		return nil, err
 	}
+
 	decodedData, err := bencode.Decode(bytes.NewReader(data))
 	if err != nil {
 		return nil, err
 	}
 	root, ok := decodedData.(bencode.Dictionary)
 	if !ok {
-		return nil, errors.New("invalid torrent structure")
+		return nil, fmt.Errorf("invalid torrent structure for file: %s", parsedPath)
 	}
-	var result *File
+	result := File{}
 
 	// announce
 	if err := result.parseAnnounce(root); err != nil {
@@ -118,7 +127,7 @@ func Parse(path string) (*File, error) {
 	// encoding
 	result.parseEncoding(root)
 
-	return result, nil
+	return &result, nil
 }
 
 // =====================================================================================
@@ -202,7 +211,7 @@ func (i *InfoDict) parseFiles(infoRoot bencode.Dictionary) error {
 
 		fileInfoList = append(fileInfoList, FileInfo{
 			Length: length,
-			Path:   []string{i.Name}, // by this point, it's guaranteed that i.Name is not nil
+			Path:   []string{i.Name}, // by this point, it's guaranteed i.Name is not nil
 		})
 	} else {
 		// multi-file mode
@@ -317,30 +326,31 @@ func (t *File) parseAnnounceList(root bencode.Dictionary) {
 		return
 	}
 
-	var parsedAnnounceList [][]string
-	for tierCount, tierRaw := range rawList {
-		tierList, ok := tierRaw.(bencode.List)
+	var announceList [][]string
+
+	for tierIdx, tierRaw := range rawList {
+		tier, ok := tierRaw.(bencode.List)
 		if !ok {
-			fmt.Printf("parsing tier #%d: expected bencode.List, got %T\n", tierCount, tierRaw) // TODO: change to log or remove
+			fmt.Printf("tier %d: expected bencode.List, got %T\n", tierIdx, tierRaw)
 			continue
 		}
 
 		var urls []string
-		for urlCount, urlRaw := range tierList {
-			urlStr, ok := urlRaw.(bencode.ByteString)
+		for urlIdx, urlRaw := range tier {
+			url, ok := urlRaw.(bencode.ByteString)
 			if !ok {
-				fmt.Printf("parsing URL #%d in tier #%d: expected string, got %T\n", tierCount, urlCount, urlRaw) // TODO: change to log or remove
+				fmt.Printf("tier %d, url %d: expected string, got %T\n", tierIdx, urlIdx, urlRaw)
 				continue
 			}
-			urls = append(urls, urlStr)
+			urls = append(urls, string(url))
 		}
 
 		if len(urls) > 0 {
-			parsedAnnounceList = append(parsedAnnounceList, urls)
+			announceList = append(announceList, urls)
 		}
 	}
 
-	t.AnnounceList = parsedAnnounceList
+	t.AnnounceList = announceList
 }
 
 func (t *File) parseCreationDate(root bencode.Dictionary) {
