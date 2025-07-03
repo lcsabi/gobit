@@ -261,7 +261,6 @@ func (i *InfoDict) parsePieceLength(infoRoot bencode.Dictionary) error {
 	return nil
 }
 
-// ! continue here
 // implement parsePieces() here
 
 func (i *InfoDict) parsePrivate(infoRoot bencode.Dictionary) {
