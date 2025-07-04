@@ -134,6 +134,7 @@ func ToString(value Value) string {
 	return sb.String()
 }
 
+// TODO: test
 // AsByteString attempts to assert the given Bencode value as a ByteString.
 // It returns the ByteString if the type matches, or an error otherwise.
 func AsByteString(v Value) (ByteString, error) {
@@ -144,6 +145,7 @@ func AsByteString(v Value) (ByteString, error) {
 	return s, nil
 }
 
+// TODO: test
 // AsInteger attempts to assert the given Bencode value as an Integer.
 // It returns the Integer if the type matches, or an error otherwise.
 func AsInteger(v Value) (Integer, error) {
@@ -154,6 +156,7 @@ func AsInteger(v Value) (Integer, error) {
 	return i, nil
 }
 
+// TODO: test
 // AsList attempts to assert the given Bencode value as a List.
 // It returns the List if the type matches, or an error otherwise.
 func AsList(v Value) (List, error) {
@@ -164,6 +167,7 @@ func AsList(v Value) (List, error) {
 	return l, nil
 }
 
+// TODO: test
 // AsDictionary attempts to assert the given Bencode value as a Dictionary.
 // It returns the Dictionary if the type matches, or an error otherwise.
 func AsDictionary(v Value) (Dictionary, error) {
@@ -196,6 +200,7 @@ func ConvertListToByteStrings(list List) ([]ByteString, error) {
 	return result, nil
 }
 
+// TODO: test
 // ConvertListToIntegers converts a Bencode List into a slice of Integers.
 // It verifies that each element in the list is of type Integer and returns
 // a typed slice. If any element is not an Integer, it returns an error.
