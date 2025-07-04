@@ -262,6 +262,12 @@ func (i *InfoDict) parsePieceLength(infoRoot bencode.Dictionary) error {
 }
 
 // implement parsePieces() here
+func (i *InfoDict) parsePieces(infoRoot bencode.Dictionary) error {
+	var completeList [][20]byte
+
+	i.Pieces = completeList
+	return nil
+}
 
 func (i *InfoDict) parsePrivate(infoRoot bencode.Dictionary) {
 	raw, exists := infoRoot[keyPrivate]
