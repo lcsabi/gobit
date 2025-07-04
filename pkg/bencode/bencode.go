@@ -338,7 +338,7 @@ func decodeInteger(r *bytes.Reader) (Integer, error) {
 				return 0, fmt.Errorf("leading zero in integer")
 			}
 
-			// defensive unread, panic should not happen because we guarantee to read a byte before unreading
+			// panic should not happen because we guarantee to read a byte before unreading
 			if err := r.UnreadByte(); err != nil {
 				return 0, fmt.Errorf("unread error while decoding integer: %w", err)
 			}
@@ -371,7 +371,7 @@ func decodeList(r *bytes.Reader) (List, error) {
 			break
 		}
 
-		// defensive unread to properly identify next type
+		// unread to properly identify next type
 		// panic should not happen because we guarantee to read a byte before unreading
 		if err := r.UnreadByte(); err != nil {
 			return nil, fmt.Errorf("unread error while decoding integer: %w", err)
@@ -398,7 +398,7 @@ func decodeDictionary(r *bytes.Reader) (Dictionary, error) {
 		if delimiter == 'e' {
 			break
 		}
-		// defensive unread to properly identify next type
+		// unread to properly identify next type
 		// panic should not happen because we guarantee to read a byte before unreading
 		if err := r.UnreadByte(); err != nil {
 			return nil, fmt.Errorf("unread error while decoding integer: %w", err)
@@ -411,9 +411,9 @@ func decodeDictionary(r *bytes.Reader) (Dictionary, error) {
 		}
 
 		// dictionaries must have byte strings as keys
-		keyAsString, ok := key.(ByteString)
-		if !ok {
-			return nil, errors.New("dictionary key is not a string")
+		keyAsString, err := AsByteString(key)
+		if err != nil {
+			return nil, fmt.Errorf("dictionary key is not a string: %w", err)
 		}
 
 		// parse the value
