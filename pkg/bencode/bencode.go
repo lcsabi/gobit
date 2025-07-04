@@ -124,6 +124,7 @@ func TypeOf(value Value) string {
 	}
 }
 
+// TODO: test
 // ToString returns a human-readable string representation of the given Value,
 // formatted with indentation and type labels. This is useful for debugging.
 func ToString(value Value) string {
@@ -131,6 +132,30 @@ func ToString(value Value) string {
 	prettyPrintValue(&sb, value, 0)
 
 	return sb.String()
+}
+
+// ConvertListToByteStrings converts a Bencode List into a slice of ByteStrings.
+// It verifies that each element in the list is a ByteString and returns an error
+// if any element is of a different type.
+//
+// This function is useful when decoding Bencode data where a list is expected
+// to contain only strings (e.g., the "path" field in .torrent files).
+//
+// Example:
+//
+//	rawList := bencode.List{bencode.ByteString("a"), bencode.ByteString("b")}
+//	strs, err := bencode.ConvertListToByteStrings(rawList)
+//	// strs == []bencode.ByteString{"a", "b"}
+func ConvertListToByteStrings(list List) ([]ByteString, error) {
+	result := make([]ByteString, 0, len(list)) // preallocate for performance
+	for i, v := range list {
+		s, ok := v.(ByteString)
+		if !ok {
+			return nil, fmt.Errorf("ConvertListToByteStrings: element at index %d is not a ByteString (got %T)", i, v)
+		}
+		result = append(result, s)
+	}
+	return result, nil
 }
 
 // TODO: test
@@ -321,7 +346,7 @@ func decodeDictionary(r *bytes.Reader) (Dictionary, error) {
 		}
 
 		// dictionaries must have byte strings as keys
-		keyAsString, ok := key.(string)
+		keyAsString, ok := key.(ByteString)
 		if !ok {
 			return nil, errors.New("dictionary key is not a string")
 		}
@@ -357,7 +382,7 @@ func encodeInteger(w *bytes.Buffer, value int64) error {
 	return nil
 }
 
-func encodeList(w *bytes.Buffer, list []Value) error {
+func encodeList(w *bytes.Buffer, list List) error {
 	w.WriteByte('l') // beginning delimiter for a list
 	for _, item := range list {
 		if err := EncodeTo(w, item); err != nil {
@@ -369,7 +394,7 @@ func encodeList(w *bytes.Buffer, list []Value) error {
 	return nil
 }
 
-func encodeDictionary(w *bytes.Buffer, dictionary map[string]Value) error {
+func encodeDictionary(w *bytes.Buffer, dictionary Dictionary) error {
 	w.WriteByte('d') // beginning delimiter for a dictionary
 	keys := make([]string, 0, len(dictionary))
 	for k := range dictionary {
