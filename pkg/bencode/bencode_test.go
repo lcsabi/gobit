@@ -185,6 +185,59 @@ func TestDecodeInvalidDictionary(t *testing.T) {
 	}
 }
 
+// TestConvertListToByteStrings verifies the behavior of ConvertListToByteStrings,
+// ensuring it correctly converts valid lists, detects invalid elements, and handles empty input.
+func TestConvertListToByteStrings(t *testing.T) {
+	t.Run("valid ByteString list", func(t *testing.T) {
+		list := List{
+			ByteString("file"),
+			ByteString("name"),
+			ByteString("txt"),
+		}
+		expected := []ByteString{"file", "name", "txt"}
+
+		result, err := ConvertListToByteStrings(list)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(result) != len(expected) {
+			t.Fatalf("expected length %d, got %d", len(expected), len(result))
+		}
+		for i := range result {
+			if result[i] != expected[i] {
+				t.Errorf("element %d mismatch: expected %q, got %q", i, expected[i], result[i])
+			}
+		}
+	})
+
+	t.Run("list with non-ByteString element", func(t *testing.T) {
+		list := List{
+			ByteString("valid"),
+			123, // invalid
+			ByteString("another"),
+		}
+		_, err := ConvertListToByteStrings(list)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		expectedMsg := "element at index 1"
+		if err.Error() == "" || !strings.Contains(err.Error(), expectedMsg) {
+			t.Errorf("expected error containing %q, got: %v", expectedMsg, err)
+		}
+	})
+
+	t.Run("empty list", func(t *testing.T) {
+		list := List{}
+		result, err := ConvertListToByteStrings(list)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(result) != 0 {
+			t.Errorf("expected empty result, got %v", result)
+		}
+	})
+}
+
 // TestDecode verifies recursive decoding of a complete bencoded structure,
 // such as a torrent metadata dictionary.
 func TestDecode(t *testing.T) {
@@ -371,4 +424,3 @@ func TestTypeOf(t *testing.T) {
 // TODO: implement benchmarking decode and encode
 // TODO: test large payloads (10MB+)
 // TODO: test maximum byte string length
-// TODO: add testing ToString
