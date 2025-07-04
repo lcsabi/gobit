@@ -134,24 +134,84 @@ func ToString(value Value) string {
 	return sb.String()
 }
 
+// AsByteString attempts to assert the given Bencode value as a ByteString.
+// It returns the ByteString if the type matches, or an error otherwise.
+func AsByteString(v Value) (ByteString, error) {
+	s, ok := v.(ByteString)
+	if !ok {
+		return "", fmt.Errorf("expected ByteString, got %T", v)
+	}
+	return s, nil
+}
+
+// AsInteger attempts to assert the given Bencode value as an Integer.
+// It returns the Integer if the type matches, or an error otherwise.
+func AsInteger(v Value) (Integer, error) {
+	i, ok := v.(Integer)
+	if !ok {
+		return 0, fmt.Errorf("expected Integer, got %T", v)
+	}
+	return i, nil
+}
+
+// AsList attempts to assert the given Bencode value as a List.
+// It returns the List if the type matches, or an error otherwise.
+func AsList(v Value) (List, error) {
+	l, ok := v.(List)
+	if !ok {
+		return nil, fmt.Errorf("expected List, got %T", v)
+	}
+	return l, nil
+}
+
+// AsDictionary attempts to assert the given Bencode value as a Dictionary.
+// It returns the Dictionary if the type matches, or an error otherwise.
+func AsDictionary(v Value) (Dictionary, error) {
+	d, ok := v.(Dictionary)
+	if !ok {
+		return nil, fmt.Errorf("expected Dictionary, got %T", v)
+	}
+	return d, nil
+}
+
 // ConvertListToByteStrings converts a Bencode List into a slice of ByteStrings.
-// It verifies that each element in the list is a ByteString and returns an error
-// if any element is of a different type.
+// It verifies that each element in the list is of type ByteString and returns
+// a typed slice. If any element is not a ByteString, it returns an error.
 //
-// This function is useful when decoding Bencode data where a list is expected
-// to contain only strings (e.g., the "path" field in .torrent files).
+// This function is useful when decoding Bencode lists expected to contain only strings.
 //
-// Example:
+// Example usage:
 //
 //	rawList := bencode.List{bencode.ByteString("a"), bencode.ByteString("b")}
-//	strs, err := bencode.ConvertListToByteStrings(rawList)
-//	// strs == []bencode.ByteString{"a", "b"}
+//	strs, err := bencode.ConvertListToByteStrings(rawList) // strs == []bencode.ByteString{"a", "b"}
 func ConvertListToByteStrings(list List) ([]ByteString, error) {
-	result := make([]ByteString, 0, len(list)) // preallocate for performance
+	result := make([]ByteString, 0, len(list)) // preallocate
 	for i, v := range list {
-		s, ok := v.(ByteString)
-		if !ok {
-			return nil, fmt.Errorf("ConvertListToByteStrings: element at index %d is not a ByteString (got %T)", i, v)
+		s, err := AsByteString(v)
+		if err != nil {
+			return nil, fmt.Errorf("ConvertListToByteStrings: element at index %d: %w", i, err)
+		}
+		result = append(result, s)
+	}
+	return result, nil
+}
+
+// ConvertListToIntegers converts a Bencode List into a slice of Integers.
+// It verifies that each element in the list is of type Integer and returns
+// a typed slice. If any element is not an Integer, it returns an error.
+//
+// This function is useful when decoding Bencode lists expected to contain only integers.
+//
+// Example usage:
+//
+//	list := bencode.List{bencode.Integer(1), bencode.Integer(2)}
+//	ints, err := bencode.ConvertListToIntegers(list) // ints == []bencode.Integer{1, 2}
+func ConvertListToIntegers(list List) ([]Integer, error) {
+	result := make([]Integer, 0, len(list)) // preallocate
+	for i, v := range list {
+		s, err := AsInteger(v)
+		if err != nil {
+			return nil, fmt.Errorf("ConvertListToIntegers: element at index %d: %w", i, err)
 		}
 		result = append(result, s)
 	}
