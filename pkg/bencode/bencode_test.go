@@ -93,8 +93,6 @@ func TestTypeOf(t *testing.T) {
 	}
 }
 
-// TODO: test ToString here
-
 // TestAsByteString verifies correct type assertion behavior of AsByteString.
 func TestAsByteString(t *testing.T) {
 	tests := []struct {
