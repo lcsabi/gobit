@@ -371,7 +371,71 @@ func TestConvertListToIntegers(t *testing.T) {
 	}
 }
 
-// TODO: test prettyPrintValue here
+// TestPrettyPrintValue verifies that prettyPrintValue produces the expected formatted
+// output for various Value types including ByteString, Integer, List, Dictionary,
+// and unknown types.
+func TestPrettyPrintValue(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    Value
+		expected string
+	}{
+		{
+			name:     "Print ByteString",
+			input:    ByteString("hello"),
+			expected: `string: "hello"` + "\n",
+		},
+		{
+			name:     "Print Integer",
+			input:    Integer(42),
+			expected: "integer: 42\n",
+		},
+		{
+			name:  "Print List of ByteStrings",
+			input: List{ByteString("a"), ByteString("b")},
+			expected: `list:
+  [0]:
+    string: "a"
+  [1]:
+    string: "b"
+`,
+		},
+		{
+			name: "Print Dictionary with Integers",
+			input: Dictionary{
+				"x": Integer(1),
+				"y": Integer(2),
+			},
+			expected: `dictionary:
+  key: "x"
+    integer: 1
+  key: "y"
+    integer: 2
+`,
+		},
+		{
+			name:     "Unknown type",
+			input:    struct{}{},
+			expected: "unknown type: struct {} ({}{})\n",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var sb strings.Builder
+			prettyPrintValue(&sb, tc.input, 0)
+			got := sb.String()
+
+			if tc.name == "Unknown type" {
+				if !strings.HasPrefix(got, "unknown type:") {
+					t.Errorf("expected unknown type message, got %q", got)
+				}
+			} else if got != tc.expected {
+				t.Errorf("prettyPrintValue() = \n%q\nwant:\n%q", got, tc.expected)
+			}
+		})
+	}
+}
 
 // TestParseString verifies decoding of bencoded strings.
 func TestParseString(t *testing.T) {

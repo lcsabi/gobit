@@ -218,7 +218,9 @@ func ConvertListToIntegers(list List) ([]Integer, error) {
 }
 
 // TODO: test
-// write error is not checked because we are always writing to a strings.Builder
+// prettyPrintValue writes a human-readable, indented representation of a bencode Value
+// to the provided io.Writer. It recursively handles nested lists and dictionaries.
+// Note: write errors are not checked because the writer is assumed to be error-free because of strings.Builder
 func prettyPrintValue(w io.Writer, value Value, indentLevel int) {
 	indent := strings.Repeat("  ", indentLevel)
 
