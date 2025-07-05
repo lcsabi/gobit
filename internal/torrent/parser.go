@@ -168,7 +168,6 @@ func (t *MetaInfo) parseAnnounce(root bencode.Dictionary) error {
 	return nil
 }
 
-// parse required fields based on cost
 func (t *MetaInfo) parseInfo(root bencode.Dictionary) error {
 	var infoDictionary InfoDict
 	raw, exists := root[keyInfo]

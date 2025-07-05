@@ -217,7 +217,6 @@ func ConvertListToIntegers(list List) ([]Integer, error) {
 	return result, nil
 }
 
-// TODO: test
 // prettyPrintValue writes a human-readable, indented representation of a bencode Value
 // to the provided io.Writer. It recursively handles nested lists and dictionaries.
 // Note: write errors are not checked because the writer is assumed to be error-free because of strings.Builder
