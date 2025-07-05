@@ -2,6 +2,7 @@ package torrent
 
 import (
 	"bytes"
+	"crypto/sha1"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -111,6 +112,13 @@ func Parse(path string) (*File, error) {
 	if err := result.parseInfo(root); err != nil {
 		return nil, err
 	}
+
+	// hash info dict
+	infoHash, err := createInfoHash(root)
+	if err != nil {
+		return nil, err
+	}
+	result.InfoHash = infoHash
 
 	// announce-list
 	result.parseAnnounceList(root)
@@ -342,7 +350,25 @@ func parseFilePath(root bencode.Dictionary) ([]bencode.ByteString, error) {
 	return result, nil
 }
 
-// TODO: implement createInfoHash() here, hash the bencoded info dictionary into InfoHash, probably do this before optional fields are parsed
+// TODO: test somehow
+func createInfoHash(root bencode.Dictionary) ([20]byte, error) {
+	raw, exists := root[keyInfo]
+	if !exists {
+		return [20]byte{}, fmt.Errorf("'%s' key not found", keyInfo)
+	}
+
+	infoDict, err := bencode.AsDictionary(raw)
+	if err != nil {
+		return [20]byte{}, fmt.Errorf("'%s' is not a dictionary: %w", keyInfo, err)
+	}
+
+	encoded, err := bencode.Encode(infoDict)
+	if err != nil {
+		return [20]byte{}, fmt.Errorf("encoding '%s': %w", keyInfo, err)
+	}
+
+	return sha1.Sum(encoded), nil
+}
 
 // Reference: https://bittorrent.org/beps/bep_0012.html
 func (t *File) parseAnnounceList(root bencode.Dictionary) {
