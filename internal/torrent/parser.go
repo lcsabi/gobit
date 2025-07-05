@@ -37,6 +37,7 @@ const (
 // TODO: reorder struct fields for memory efficiency, visualize with structlayout
 // TODO: make sure to parse the required fields first, and the quickest ones from those for efficiency
 // TODO: add keys to root level: azureus_properties, add info dict key: source
+// TODO: add ToString() method
 
 // MetaInfo represents the root structure of a .torrent file.
 // It includes tracker URLs, metadata, and optional attributes such as comments or encoding.
