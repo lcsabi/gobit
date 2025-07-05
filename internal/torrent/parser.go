@@ -221,7 +221,7 @@ func (i *InfoDict) parseName(infoRoot bencode.Dictionary) error {
 		return fmt.Errorf("parsing '%s': %w", keyName, err)
 	}
 
-	i.Name = bencode.ByteString(filepath.Clean(string(name))) // remvove any unwanted garbage
+	i.Name = filepath.Clean(name) // remvove any unwanted garbage
 	return nil
 }
 
