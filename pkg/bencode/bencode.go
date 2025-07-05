@@ -124,7 +124,6 @@ func TypeOf(value Value) string {
 	}
 }
 
-// TODO: test
 // ToString returns a human-readable string representation of the given Value,
 // formatted with indentation and type labels. This is useful for debugging.
 func ToString(value Value) string {

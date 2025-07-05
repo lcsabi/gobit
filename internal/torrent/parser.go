@@ -84,7 +84,6 @@ func (i *InfoDict) IsMultiFile() bool {
 }
 
 func Parse(path string) (*MetaInfo, error) {
-	// TODO: reformat cleaning path, verifying extension and reading file into a function
 	data, path, err := readTorrentFile(path)
 	if err != nil {
 		return nil, err
@@ -169,8 +168,7 @@ func (t *MetaInfo) parseAnnounce(root bencode.Dictionary) error {
 	return nil
 }
 
-// parse required fields in order of importance and cost
-// cheapest/most critical first
+// parse required fields based on cost
 func (t *MetaInfo) parseInfo(root bencode.Dictionary) error {
 	var infoDictionary InfoDict
 	raw, exists := root[keyInfo]

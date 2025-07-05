@@ -373,6 +373,8 @@ func TestConvertListToIntegers(t *testing.T) {
 	}
 }
 
+// TODO: test prettyPrintValue here
+
 // TestParseString verifies decoding of bencoded strings.
 func TestParseString(t *testing.T) {
 	testCases := []struct {
