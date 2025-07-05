@@ -96,8 +96,8 @@ func Parse(path string) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
-	root, ok := decodedData.(bencode.Dictionary)
-	if !ok {
+	root, err := bencode.AsDictionary(decodedData)
+	if err != nil {
 		return nil, fmt.Errorf("invalid torrent structure for file: %s", parsedPath)
 	}
 	result := File{}
@@ -137,9 +137,10 @@ func (t *File) parseAnnounce(root bencode.Dictionary) error {
 	if !exists {
 		return fmt.Errorf("'%s' key not found", keyAnnounce)
 	}
-	announce, ok := raw.(bencode.ByteString)
-	if !ok {
-		return fmt.Errorf("parsing '%s': expected bencode.ByteString, got %T", keyAnnounce, raw)
+
+	announce, err := bencode.AsByteString(raw)
+	if err != nil {
+		return fmt.Errorf("parsing '%s': %w", keyAnnounce, err)
 	}
 
 	t.Announce = announce
@@ -152,9 +153,10 @@ func (t *File) parseInfo(root bencode.Dictionary) error {
 	if !exists {
 		return fmt.Errorf("'%s' key not found", keyInfo)
 	}
-	info, ok := raw.(bencode.Dictionary)
-	if !ok {
-		return fmt.Errorf("parsing '%s': expected bencode.Dictionary, got %T", keyInfo, raw)
+
+	info, err := bencode.AsDictionary(raw)
+	if err != nil {
+		return fmt.Errorf("parsing '%s': %w", keyInfo, err)
 	}
 
 	// name
@@ -189,9 +191,10 @@ func (i *InfoDict) parseName(infoRoot bencode.Dictionary) error {
 	if !exists {
 		return fmt.Errorf("'%s' key not found", keyName)
 	}
-	name, ok := raw.(bencode.ByteString)
-	if !ok {
-		return fmt.Errorf("parsing '%s': expected bencode.ByteString, got %T", keyName, raw)
+
+	name, err := bencode.AsByteString(raw)
+	if err != nil {
+		return fmt.Errorf("parsing '%s': %w", keyName, err)
 	}
 
 	i.Name = name
@@ -215,15 +218,15 @@ func (i *InfoDict) parseFiles(infoRoot bencode.Dictionary) error {
 		})
 	} else {
 		// multi-file mode
-		fmt.Println("multi-file mode torrent")  // TODO: change to log or remove
-		multiFileList, ok := raw.(bencode.List) // contains dictionaries with file path and length
-		if !ok {
-			return fmt.Errorf("parsing '%s': expected bencode.List, got %T", keyFiles, raw)
+		fmt.Println("multi-file mode torrent")    // TODO: change to log or remove
+		multiFileList, err := bencode.AsList(raw) // contains dictionaries with file path and length
+		if err != nil {
+			return fmt.Errorf("parsing '%s': %w", keyFiles, err)
 		}
 		for idx, elem := range multiFileList {
-			multiFileDict, ok := elem.(bencode.Dictionary) // contains file path and length keys
-			if !ok {
-				return fmt.Errorf("parsing entry %d in '%s': expected bencode.Dictionary, got %T", idx, keyFiles, elem)
+			multiFileDict, err := bencode.AsDictionary(elem) // contains file path and length keys
+			if err != nil {
+				return fmt.Errorf("parsing entry %d in '%s': %w", idx, keyFiles, err)
 			}
 
 			length, err := parseFileLength(multiFileDict)
@@ -252,18 +255,37 @@ func (i *InfoDict) parsePieceLength(infoRoot bencode.Dictionary) error {
 		return fmt.Errorf("'%s' key not found", keyPieceLength)
 	}
 
-	pieceLength, ok := raw.(bencode.Integer)
-	if !ok {
-		return fmt.Errorf("parsing '%s': expected bencode.Integer, got %T", keyPieceLength, raw)
+	pieceLength, err := bencode.AsInteger(raw)
+	if err != nil {
+		return fmt.Errorf("parsing '%s': %w", keyPieceLength, err)
 	}
 
 	i.PieceLength = pieceLength
 	return nil
 }
 
-// implement parsePieces() here
 func (i *InfoDict) parsePieces(infoRoot bencode.Dictionary) error {
+	raw, exists := infoRoot[keyPieces]
+	if !exists {
+		return fmt.Errorf("'%s' key not found", keyPieces)
+	}
+
+	piecesByteString, err := bencode.AsByteString(raw)
+	if err != nil {
+		return fmt.Errorf("parsing '%s': %w", keyPieces, err)
+	}
+
+	if len(piecesByteString)%20 != 0 {
+		return fmt.Errorf("invalid '%s' length: not divisible by 20", keyPieces)
+	}
+
 	var completeList [][20]byte
+	for i := 0; i < len(piecesByteString); i += 20 {
+		var chunk [20]byte
+		end := i + 20
+		copy(chunk[:], piecesByteString[i:end])
+		completeList = append(completeList, chunk)
+	}
 
 	i.Pieces = completeList
 	return nil
@@ -276,9 +298,9 @@ func (i *InfoDict) parsePrivate(infoRoot bencode.Dictionary) {
 		return
 	}
 
-	private, ok := raw.(bencode.Integer)
-	if !ok {
-		fmt.Printf("parsing '%s': expected bencode.Integer, got %T\n", keyPrivate, raw) // TODO: change to log or remove
+	private, err := bencode.AsInteger(raw)
+	if err != nil {
+		fmt.Printf("parsing '%s': expected bencode.Integer, got %T\n", keyPrivate, err) // TODO: change to log or remove
 		return
 	}
 
@@ -293,9 +315,9 @@ func parseFileLength(root bencode.Dictionary) (bencode.Integer, error) {
 		return 0, fmt.Errorf("'%s' key not found", keyLength)
 	}
 
-	length, ok := raw.(bencode.Integer)
-	if !ok {
-		return 0, fmt.Errorf("parsing '%s': expected bencode.Integer, got %T", keyLength, raw)
+	length, err := bencode.AsInteger(raw)
+	if err != nil {
+		return 0, fmt.Errorf("parsing '%s': %w", keyLength, err)
 	}
 
 	return length, nil
@@ -307,12 +329,17 @@ func parseFilePath(root bencode.Dictionary) ([]bencode.ByteString, error) {
 		return nil, fmt.Errorf("'%s' key not found", keyPath)
 	}
 
-	path, ok := raw.([]bencode.ByteString)
-	if !ok {
-		return nil, fmt.Errorf("parsing '%s': expected []bencode.ByteString, got %T", keyPath, raw)
+	paths, err := bencode.AsList(raw)
+	if err != nil {
+		return nil, fmt.Errorf("parsing '%s': %w", keyPath, err)
 	}
 
-	return path, nil
+	result, err := bencode.ConvertListToByteStrings(paths)
+	if err != nil {
+		return nil, fmt.Errorf("parsing file path: %w", err)
+	}
+
+	return result, nil
 }
 
 // TODO: implement createInfoHash() here, hash the bencoded info dictionary into InfoHash, probably do this before optional fields are parsed
@@ -325,26 +352,26 @@ func (t *File) parseAnnounceList(root bencode.Dictionary) {
 		return
 	}
 
-	rawList, ok := raw.(bencode.List)
-	if !ok {
-		fmt.Printf("parsing '%s': expected bencode.List, got %T\n", keyAnnounceList, raw) // TODO: change to log or remove
+	rawList, err := bencode.AsList(raw)
+	if err != nil {
+		fmt.Printf("parsing '%s': %+v\n", keyAnnounceList, err) // TODO: change to log or remove
 		return
 	}
 
 	var announceList [][]string
 
 	for tierIdx, tierRaw := range rawList {
-		tier, ok := tierRaw.(bencode.List)
-		if !ok {
-			fmt.Printf("tier %d: expected bencode.List, got %T\n", tierIdx, tierRaw)
+		tier, err := bencode.AsList(tierRaw)
+		if err != nil {
+			fmt.Printf("tier %d: %+v\n", tierIdx, err)
 			continue
 		}
 
 		var urls []string
 		for urlIdx, urlRaw := range tier {
-			url, ok := urlRaw.(bencode.ByteString)
-			if !ok {
-				fmt.Printf("tier %d, url %d: expected bencode.ByteString, got %T\n", tierIdx, urlIdx, urlRaw)
+			url, err := bencode.AsByteString(urlRaw)
+			if err != nil {
+				fmt.Printf("tier %d, url %d: %+v\n", tierIdx, urlIdx, err)
 				continue
 			}
 			urls = append(urls, url)
@@ -365,9 +392,9 @@ func (t *File) parseCreationDate(root bencode.Dictionary) {
 		return
 	}
 
-	creationDate, ok := raw.(bencode.Integer)
-	if !ok {
-		fmt.Printf("parsing '%s': expected bencode.Integer, got %T\n", keyCreationDate, raw) // TODO: change to log or remove
+	creationDate, err := bencode.AsInteger(raw)
+	if err != nil {
+		fmt.Printf("parsing '%s': %+v\n", keyCreationDate, err) // TODO: change to log or remove
 		return
 	}
 
@@ -381,9 +408,9 @@ func (t *File) parseComment(root bencode.Dictionary) {
 		return
 	}
 
-	comment, ok := raw.(bencode.ByteString)
-	if !ok {
-		fmt.Printf("parsing '%s': expected string, got %T\n", keyComment, raw) // TODO: change to log or remove
+	comment, err := bencode.AsByteString(raw)
+	if err != nil {
+		fmt.Printf("parsing '%s': %+v\n", keyComment, err) // TODO: change to log or remove
 		return
 	}
 
@@ -397,9 +424,9 @@ func (t *File) parseCreatedBy(root bencode.Dictionary) {
 		return
 	}
 
-	createdBy, ok := raw.(bencode.ByteString)
-	if !ok {
-		fmt.Printf("parsing '%s': expected bencode.ByteString, got %T\n", keyCreatedBy, raw) // TODO: change to log or remove
+	createdBy, err := bencode.AsByteString(raw)
+	if err != nil {
+		fmt.Printf("parsing '%s': %+v\n", keyCreatedBy, err) // TODO: change to log or remove
 		return
 	}
 
@@ -413,9 +440,9 @@ func (t *File) parseEncoding(root bencode.Dictionary) {
 		return
 	}
 
-	encoding, ok := raw.(bencode.ByteString)
-	if !ok {
-		fmt.Printf("parsing '%s': expected bencode.ByteString, got %T\n", keyEncoding, raw) // TODO: change to log or remove
+	encoding, err := bencode.AsByteString(raw)
+	if err != nil {
+		fmt.Printf("parsing '%s': %+v\n", keyEncoding, err) // TODO: change to log or remove
 		return
 	}
 
