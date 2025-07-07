@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	file, err := torrent.Parse("D:\\devstuff\\projects\\gobit\\cmd\\client\\single.example.torrent")
+	file, err := torrent.Parse("D:\\devstuff\\projects\\gobit\\cmd\\client\\info_hash2.torrent")
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -18,5 +18,5 @@ func main() {
 	fmt.Printf("%v\n", file.Info.Name)
 	fmt.Printf("%v\n", file.Info.PieceLength)
 	fmt.Printf("%v\n", file.Info.Files)
-	fmt.Printf("%v\n", *file.Info.Private)
+	fmt.Printf("%x\n", file.InfoHash)
 }
