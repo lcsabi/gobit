@@ -97,5 +97,8 @@
 
 ## 4. Specification References
 [BitTorrent Specification Theory (unofficial)](https://wiki.theory.org/BitTorrentSpecification)
+
 [BEP 0003: The BitTorrent Protocol Specification](https://bittorrent.org/beps/bep_0003.html)
+
 [BEP 0012: Multitracker Metadata Extension](https://www.bittorrent.org/beps/bep_0012.html)
+
