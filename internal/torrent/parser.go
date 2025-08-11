@@ -3,6 +3,7 @@ package torrent
 import (
 	"bytes"
 	"crypto/sha1"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -138,6 +139,9 @@ func Parse(path string) (*MetaInfo, error) {
 
 func readTorrentFile(path string) ([]byte, string, error) {
 	extension := filepath.Ext(path)
+	if path == "" {
+		return nil, "", errors.New("empty path provided")
+	}
 	if strings.ToLower(extension) != ".torrent" {
 		return nil, "", fmt.Errorf("invalid file extension, expected .torrent, got: %s", extension)
 	}
