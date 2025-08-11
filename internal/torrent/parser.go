@@ -35,6 +35,8 @@ const (
 	keyPath   = "path"
 )
 
+const MaxTorrentSize = 10 * 1024 * 1024 // 10 MB
+
 // TODO: reorder struct fields for memory efficiency, visualize with structlayout
 // TODO: make sure to parse the required fields first, and the quickest ones from those for efficiency
 // TODO: add keys to root level: azureus_properties, add info dict key: source
@@ -130,10 +132,11 @@ func Parse(path string) (*MetaInfo, error) {
 
 func readTorrentFile(path string) ([]byte, string, error) {
 	path = strings.TrimSpace(path)
-	extension := filepath.Ext(path)
 	if path == "" {
 		return nil, "", errors.New("empty path provided")
 	}
+
+	extension := filepath.Ext(path)
 	if strings.ToLower(extension) != ".torrent" {
 		return nil, "", fmt.Errorf("invalid file extension: expected .torrent, got: %q", extension)
 	}
@@ -142,6 +145,16 @@ func readTorrentFile(path string) ([]byte, string, error) {
 		return nil, "", fmt.Errorf("failed to resolve absolute path: %w", err)
 	}
 	cleaned := filepath.Clean(absPath)
+
+	// TODO: add logging
+	info, err := os.Stat(cleaned)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to stat file: %w", err)
+	}
+	if info.Size() > MaxTorrentSize {
+		return nil, "", fmt.Errorf("torrent file too large (%d bytes), max allowed is %d bytes", info.Size(), MaxTorrentSize)
+	}
+
 	data, err := os.ReadFile(cleaned)
 	if err != nil {
 		return nil, "", err
