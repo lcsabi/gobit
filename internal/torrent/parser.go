@@ -143,7 +143,7 @@ func readTorrentFile(path string) ([]byte, string, error) {
 		return nil, "", errors.New("empty path provided")
 	}
 	if strings.ToLower(extension) != ".torrent" {
-		return nil, "", fmt.Errorf("invalid file extension, expected .torrent, got: %s", extension)
+		return nil, "", fmt.Errorf("invalid file extension: expected .torrent, got: %s", extension)
 	}
 	absPath, err := filepath.Abs(path)
 	if err != nil {
