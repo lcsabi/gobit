@@ -20,7 +20,7 @@ import (
 type Value any
 
 // ByteString represents a bencoded byte string,
-// which is always UTF-8 decoded and exposed as a Go string.
+// stored as a Go string of raw bytes (no UTF-8 validation).
 type ByteString = string
 
 // Integer represents a bencoded integer.
@@ -51,7 +51,17 @@ func Decode(r io.Reader) (Value, error) {
 		return nil, err
 	}
 
-	return parseBencode(bytes.NewReader(data))
+	br := bytes.NewReader(data)
+	val, err := parseBencode(br)
+	if err != nil {
+		return nil, err
+	}
+
+	// check for trailing data
+	if br.Len() != 0 {
+		return nil, fmt.Errorf("trailing data after valid bencode")
+	}
+	return val, nil
 }
 
 // Encode encodes the given Value into its bencoded byte representation.
@@ -289,7 +299,14 @@ func decodeByteString(r *bytes.Reader, firstDigit byte) (ByteString, error) {
 		}
 		buffer.WriteByte(digit)
 	}
-	byteStringLength, err := strconv.ParseInt(buffer.String(), 10, 64)
+
+	// check for leading zeros in string length
+	s := buffer.String()
+	if len(s) > 1 && s[0] == '0' {
+		return "", fmt.Errorf("length has leading zeros")
+	}
+
+	byteStringLength, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
 		return "", err
 	}
@@ -369,7 +386,7 @@ func decodeList(r *bytes.Reader) (List, error) {
 		// unread to properly identify next type
 		// panic should not happen because we guarantee to read a byte before unreading
 		if err := r.UnreadByte(); err != nil {
-			return nil, fmt.Errorf("unread error while decoding integer: %w", err)
+			return nil, fmt.Errorf("unread error while decoding list: %w", err)
 		}
 		element, err := parseBencode(r)
 		if err != nil {
@@ -396,7 +413,7 @@ func decodeDictionary(r *bytes.Reader) (Dictionary, error) {
 		// unread to properly identify next type
 		// panic should not happen because we guarantee to read a byte before unreading
 		if err := r.UnreadByte(); err != nil {
-			return nil, fmt.Errorf("unread error while decoding integer: %w", err)
+			return nil, fmt.Errorf("unread error while decoding dictionary: %w", err)
 		}
 
 		// parse the key
@@ -460,7 +477,7 @@ func encodeDictionary(w *bytes.Buffer, dictionary Dictionary) error {
 	for k := range dictionary {
 		keys = append(keys, k)
 	}
-	sort.Strings(keys)
+	sort.Strings(keys) // keys are sorted in bytewise lexicographic order as per BEP-3
 
 	for _, k := range keys {
 		if err := encodeByteString(w, k); err != nil {

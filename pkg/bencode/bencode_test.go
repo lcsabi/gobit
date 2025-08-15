@@ -470,6 +470,7 @@ func TestDecodeInvalidByteString(t *testing.T) {
 		"999:",  // declared length longer than actual
 		"3:ab",  // declared length shorter than actual
 		"a:b",   // non-numeric length
+		"03:abc",
 	}
 
 	for _, input := range testCases {
