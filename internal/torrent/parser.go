@@ -140,11 +140,11 @@ func readTorrentFile(path string) ([]byte, string, error) {
 	if strings.ToLower(extension) != ".torrent" {
 		return nil, "", fmt.Errorf("invalid file extension: expected .torrent, got: %q", extension)
 	}
-	absPath, err := filepath.Abs(path)
+	cleaned, err := filepath.Abs(path)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to resolve absolute path: %w", err)
 	}
-	cleaned := filepath.Clean(absPath)
+	// cleaned := filepath.Clean(absPath) // redundant, Abs already calls Clean
 
 	// TODO: add logging
 	info, err := os.Stat(cleaned)
