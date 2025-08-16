@@ -24,6 +24,8 @@
 
 ### In Progress
 
+### Roadmap to MVP
+
 #### Tracker Communication
 - [ ] Implement HTTP tracker request (BEP 0003)
 - [ ] Parse tracker response (`peers` list in binary or dictionary format)

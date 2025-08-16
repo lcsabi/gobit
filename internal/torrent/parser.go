@@ -383,7 +383,7 @@ func parseFilePath(root bencode.Dictionary) ([]bencode.ByteString, error) {
 }
 
 // TODO: test somehow
-// do not modify 'infoDict' before encoding because info_hash depends on exact byte structure
+// do not modify 'infoDict' before encoding because info hash depends on exact byte structure
 func createInfoHash(root bencode.Dictionary) ([20]byte, error) {
 	raw, exists := root[keyInfo]
 	if !exists {
